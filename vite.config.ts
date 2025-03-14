@@ -2,6 +2,8 @@ import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { execSync } from 'child_process'
+const commitHash = execSync('git rev-parse --short HEAD').toString();
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,6 +12,9 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  define: {
+    __COMMIT_HASH__: JSON.stringify(commitHash),
   },
   base: "/",
   preview: {
