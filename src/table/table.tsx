@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FinancialAssetRow, columns } from "./columns";
-import { DataTable } from "./data-table";
+import { DataTable } from "./template";
 import { createDate, isDateToday } from "@/utils/date";
 import { fetchBorsaItalianaData } from "@/fetching/fetchBorsaItaliana";
 import { FinancialAsset } from "@/lib/financialAsset";

@@ -208,6 +208,7 @@ export const EditableDatePickerCell = <T extends object>({
 						format="dd/MM/yyyy"
 						disabled={open}
 						onCalendarClick={() => setOpen(!open)}
+						className="bg-transparent"
 					/>
 				)}
 			/>

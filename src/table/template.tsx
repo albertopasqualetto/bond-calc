@@ -96,9 +96,9 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 	useEffect(() => {
 		// Function to check if we're in print mode
 		const checkPrintMode = () => {
-			const isPrintMode = window.matchMedia('print').matches || 
+			const isPrintMode = window.matchMedia('print').matches ||
 				window.matchMedia('(max-width: 0px)').matches;
-			
+
 			setIsPrinting(isPrintMode);
 
 			// If printing, update column visibility based on meta.printable property
@@ -112,7 +112,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 					if (columnId && col.meta && col.meta.printable === false) {
 						newVisibility[columnId] = false;
 					}
-					
+
 					// Check nested columns if they exist
 					if ('columns' in col && Array.isArray(col.columns)) {
 						col.columns.forEach(nestedCol => {
@@ -132,7 +132,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 					if (columnId) {
 						newVisibility[columnId] = true;
 					}
-					
+
 					// Reset nested columns if they exist
 					if ('columns' in col && Array.isArray(col.columns)) {
 						col.columns.forEach(nestedCol => {
@@ -187,7 +187,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 				if (columnId && col.meta && col.meta.printable === false) {
 					newVisibility[columnId] = false;
 				}
-				
+
 				// Check nested columns if they exist
 				if ('columns' in col && Array.isArray(col.columns)) {
 					col.columns.forEach(nestedCol => {
@@ -206,7 +206,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 				if (columnId) {
 					newVisibility[columnId] = true;
 				}
-				
+
 				// Reset nested columns if they exist
 				if ('columns' in col && Array.isArray(col.columns)) {
 					col.columns.forEach(nestedCol => {
@@ -395,9 +395,9 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 	const handleRowClick = (event: React.MouseEvent, row: TData) => {
 		// Check if the click target is an interactive element
 		const target = event.target as HTMLElement;
-		
+
 		// Don't open dialog if clicking on interactive elements
-		const isInteractive = 
+		const isInteractive =
 			target.tagName.toLowerCase() === 'input' ||
 			target.tagName.toLowerCase() === 'select' ||
 			target.tagName.toLowerCase() === 'button' ||
@@ -408,7 +408,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			target.closest('button') !== null ||
 			target.closest('textarea') !== null ||
 			target.closest('[contenteditable="true"]') !== null;
-			
+
 		if (!isInteractive) {
 			setSelectedRow(row);
 			setIsDialogOpen(true);
@@ -441,12 +441,16 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 	return (
 		<div className="rounded-md border">
 			<Table className="border-collapse leading-tight">
-				<TableHeader className="hover:bg-transparent">
+				<TableHeader className="bg-background hover:bg-background">
 					{table.getHeaderGroups().map((headerGroup) => (
-						<TableRow key={headerGroup.id}>
+						<TableRow key={headerGroup.id} className="hover:bg-background">
 							{headerGroup.headers.map((header) => {
 								return (
-									<TableHead key={header.id} colSpan={header.colSpan} className="p-1 hover:bg-transparent">
+									<TableHead
+										key={header.id}
+										colSpan={header.colSpan}
+										className="p-1 bg-background hover:bg-background"
+									>
 										{header.isPlaceholder
 											? null
 											: flexRender(
@@ -462,7 +466,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 				<TableBody>
 					{table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => (
-							<MemoizedRow 
+							<MemoizedRow
 								key={row.id}
 								row={row}
 								onClick={handleRowClick}
@@ -481,7 +485,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 				</TableBody>
 			</Table>
 			<div className="flex justify-between w-full print:hidden">
-				<div className="flex gap-4 p-4">
+				<div className="flex gap-3 p-4">
 					<Button
 						onClick={handleExportData}
 						variant="outline"
@@ -506,7 +510,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 					/>
 					</Button>
 				</div>
-				<div className="flex gap-4 p-4">
+				<div className="flex gap-3 p-4">
 					{onDeleteAllRows && (
 						<Button
 							variant="destructive"
@@ -529,7 +533,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 					)}
 				</div>
 			</div>
-			
+
 
 			{/* Row Detail Dialog */}
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

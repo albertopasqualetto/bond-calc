@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import YieldsTable from "./table/page"
+import YieldsTable from "./table/table"
 import { Button } from "@/components/ui/button"
 import { PenLine, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -31,7 +31,7 @@ export default function App() {
 			<style type="text/css" media="print">
 				{`@page { size: landscape; }`}
 			</style>
-			<div className="flex items-baseline justify-center">
+			<div className="flex items-baseline justify-center mt-4">
 				<span className="text-4xl font-extrabold tracking-tight lg:text-5xl">
 					Financial Assets of
 				</span>
