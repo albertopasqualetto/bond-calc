@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import YieldsTable from "./financialAssets/page"
+import YieldsTable from "./table/page"
 import { Button } from "@/components/ui/button"
 import { PenLine, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -32,12 +32,12 @@ export default function App() {
 				{`@page { size: landscape; }`}
 			</style>
 			<div className="flex items-baseline justify-center">
-				<span className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl">
+				<span className="text-4xl font-extrabold tracking-tight lg:text-5xl">
 					Financial Assets of
 				</span>
 				<div className="flex items-baseline">
 					{!isEditing ? (
-						<span className="scroll-m-20 text-4xl font-semibold tracking-tight first:mt-0 ml-2 inline-block">
+						<span className="text-4xl font-semibold tracking-tight first:mt-0 ml-2 inline-block">
 							{name || "Owner"}
 						</span>
 					) : (
@@ -60,8 +60,8 @@ export default function App() {
 					</Button>
 				</div>
 			</div>
-			<YieldsTable 
-				name={name} 
+			<YieldsTable
+				name={name}
 				onNameChange={setName} // Pass the setName function to update name when importing
 			/>
 		</>

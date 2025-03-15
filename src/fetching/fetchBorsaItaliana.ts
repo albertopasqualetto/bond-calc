@@ -87,14 +87,14 @@ export async function fetchBorsaItalianaData(
 				`API request failed with status: ${response.status}`,
 			);
 		}
-		
+
 		const result: BorsaItalianaResponse = await response.json();
 		if (!result.success) {
 			throw new Error(
 				`API request not successful: ${result.success}`,
 			);
 		}
-		
+
 		const data = result.data;
 		data.price.last = parseFloat(String(data.price.last).replace(",", "."));
 		data.price.perc = parseFloat(String(data.price.perc).replace(",", ".").replace("%", "").trim());
@@ -109,6 +109,7 @@ export async function fetchBorsaItalianaData(
 		data.info.couponRatePerc = data.info.couponRate;
 
 
+		// console.log(data);
 		return data;
 	} catch (error) {
 		console.error("Error fetching Borsa Italiana data:", error);

@@ -1,119 +1,66 @@
-import { xirr, convertRate, RateInterval } from 'node-irr';
-import { bondToIrrCashflows } from '../lib/irrAdapter';
+import { FinancialAsset, Cashflow } from '../lib/financialAsset';
 import { createDate } from '../utils/date';
 // import { Finance } from 'financejs'
 // const finance = new Finance();
-import { xirr as webcarrotXIRR } from "@webcarrot/xirr";
 
 
 describe('Bond Yield Calculator', () => {
-	describe('node-irr Bond Yield Calculator', () => {
-		test.todo('High coupon rate (5%)');
-		test.todo('Short duration bond (2 years)');
-		test.todo('Annual payment frequency');
+	test.todo('High coupon rate (5%)');
+	test.todo('Short duration bond (2 years)');
+	test.todo('Annual payment frequency');
 
-		test('IT0005445306 @ 06/03/2025', () => {
-			const cashflows = bondToIrrCashflows(
-				createDate(2025, 3, 7),
-				createDate(2028, 7, 15),
-				0.5,
-				92.81,
-				100,
-				2
-			);
-			const annualYield = convertRate(xirr(cashflows).rate, RateInterval.Year) * 100;
-			console.log(annualYield);
-			expect(annualYield).toBeCloseTo(2.781, 0);
-		});
-
-		test('IT0005441883 @ 06/03/2025', () => {
-			const cashflows = bondToIrrCashflows(
-				createDate(2025, 3, 5),
-				createDate(2072, 3, 1),
-				2.15,
-				57.8,
-				100,
-				2
-			);
-			const annualYield = convertRate(xirr(cashflows).rate, RateInterval.Year) * 100;
-			console.log(annualYield);
-			expect(annualYield).toBeCloseTo(4.2675, 0);
-		});
-
+	test('IT0005445306 @ 07/03/2025', () => {
+		const bond = new FinancialAsset(
+			"IT0005445306",
+			createDate(2025, 3, 7),
+			createDate(2028, 7, 15),
+			0.5,
+			92.81,
+			100,
+			2
+		);
+		const annualYield = bond.computeYield();
+		console.log(annualYield);
+		expect(annualYield).toBeCloseTo(2.781, 0);
 	});
 
-	describe('webcarrot xirr Bond Yield Calculator', () => {
-		test.todo('High coupon rate (5%)');
-		test.todo('Short duration bond (2 years)');
-		test.todo('Annual payment frequency');
-
-		test('IT0005445306 @ 06/03/2025', () => {
-			const cashflows = bondToIrrCashflows(
-				createDate(2025, 3, 7),
-				createDate(2028, 7, 15),
-				0.5,
-				92.81,
-				100,
-				2
-			);
-			const annualYield = webcarrotXIRR(cashflows) * 100;
-			console.log(annualYield);
-			expect(annualYield).toBeCloseTo(2.781, 0);
-		});
-
-		test('IT0005441883 @ 06/03/2025', () => {
-			const cashflows = bondToIrrCashflows(
-				createDate(2025, 3, 5),
-				createDate(2072, 3, 1),
-				2.15,
-				57.8,
-				100,
-				2
-			);
-			const annualYield = webcarrotXIRR(cashflows) * 100;
-			console.log(annualYield);
-			expect(annualYield).toBeCloseTo(4.2675, 0);
-		});
-
+	test('IT0005441883 @ 05/03/2025', () => {
+		const bond = new FinancialAsset(
+			"IT0005441883",
+			createDate(2025, 3, 5),
+			createDate(2072, 3, 1),
+			2.15,
+			57.8,
+			100,
+			2
+		);
+		const annualYield = bond.computeYield();
+		console.log(annualYield);
+		expect(annualYield).toBeCloseTo(4.2675, 0);
 	});
+	test('after 1 year today same price cut', () => {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0)
+		console.log("Today", today);
+		const settlementDate = new Date(today);
+		settlementDate.setFullYear(settlementDate.getFullYear() - 1);
+		const maturityDate = new Date(settlementDate);
+		maturityDate.setFullYear(maturityDate.getFullYear() + 2);
+		const couponRatePerc = 0.50;
+		const settlementPrice = 90;
 
-	// describe('Financejs Bond Yield Calculator', () => {
-	// 	test.todo('High coupon rate (5%)');
-	// 	test.todo('Short duration bond (2 years)');
-	// 	test.todo('Annual payment frequency');
-
-	// 	test('IT0005445306 @ 06/03/2025', () => {
-	// 		const cashflows = bondToIrrCashflows(
-	// 			createDate(2025, 3, 7),
-	// 			createDate(2028, 7, 15),
-	// 			0.005,
-	// 			92.81,
-	// 			100,
-	// 			2,
-	// 		);
-	// 		const amounts = cashflows.map(cashflow => cashflow.amount);
-	// 		const dates = cashflows.map(cashflow => cashflow.date);
-	// 		const annualYield =  finance.XIRR(amounts, dates)/100;
-	// 		console.log(annualYield);
-	// 		expect(annualYield).toBeCloseTo(0.02781, 2);
-	// 	});
-
-	// 	test('IT0005441883 @ 06/03/2025', () => {
-	// 		const cashflows = bondToIrrCashflows(
-	// 			createDate(2025, 3, 5),
-	// 			createDate(2072, 3, 1),
-	// 			0.0215,
-	// 			57.8,
-	// 			100,
-	// 			2
-	// 		);
-	// 		const amounts = cashflows.map(cashflow => cashflow.amount);
-	// 		const dates = cashflows.map(cashflow => cashflow.date);
-	// 		const annualYield =  finance.XIRR(amounts, dates)/100;
-	// 		console.log(annualYield);
-	// 		expect(annualYield).toBeCloseTo(0.042675, 2);
-	// 	});
-
-	// });
-
+		const bond = new FinancialAsset(
+			undefined,
+			settlementDate,
+			maturityDate,
+			0.5,
+			90,
+			100,
+			2
+		);
+		console.log("Cashflows today", bond.toIrrCashflows(today, settlementPrice));
+		const annualYield = bond.computeYield(today, settlementPrice);
+		console.log(annualYield);
+		expect(annualYield).toBeCloseTo(couponRatePerc, 0);
+	});
 });

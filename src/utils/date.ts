@@ -13,10 +13,11 @@ export function createDate(year: number, month: number, day: number): Date {
 // Helper function to check if a date is today
 export function isDateToday(date: Date | null | undefined): boolean {
 	if (!date) return false;
+	date = new Date(date);
 	const today = new Date();
 	return (
-	  date.getFullYear() === today.getFullYear() &&
-	  date.getMonth() === today.getMonth() &&
-	  date.getDate() === today.getDate()
+		date.getFullYear() === today.getFullYear() &&
+		date.getMonth() === today.getMonth() &&
+		date.getDate() === today.getDate()
 	);
   };

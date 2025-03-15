@@ -54,10 +54,12 @@ export default tseslint.config({
 ```
 
 
-# TODO
+# TODOs
 
 - [ ] Tenere simbolo euro?
 - [ ] Dark mode
 - [ ] internationalization
 - [ ] Fix types
 - [ ] Switch vite to production mode
+- [ ] Better locale management
+- [ ] Date input increase/decrease with keyboard

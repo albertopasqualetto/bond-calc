@@ -8,21 +8,14 @@ import {
 	SuffixEditableTextCell,
 	EditableSelectCell,
 } from "./editable-fields";
+import { FinancialAsset } from "@/lib/financialAsset";
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
-export type FinancialAsset = {
-	isin: string;
+export type FinancialAssetRow = FinancialAsset & {
 	name: string;
-	settlementDate: Date;
-	maturityDate: Date;
-	couponRatePerc: number;
-	capitalGainTaxPerc: number;
-	settlementPrice: number;
-	redemptionPrice: number;
-	yearlyFrequency: number;
-	annualYieldGross: number;
-	annualYieldNet: number;
+	annualYieldGross?: number;
+	annualYieldNet?: number;
 	todayPrice?: number;
 	annualYieldGrossToday?: number;
 	annualYieldNetToday?: number;

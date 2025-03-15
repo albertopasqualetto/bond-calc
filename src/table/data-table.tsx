@@ -6,8 +6,9 @@ import {
 	getCoreRowModel,
 	useReactTable,
 	VisibilityState,
+	Row,
 } from "@tanstack/react-table";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 
 import {
 	Table,
@@ -47,7 +48,32 @@ interface DataTableProps<TData, TValue> {
 	defaultData?: TData[]; // Default data to use if nothing in storage
 }
 
-export function DataTable<TData, TValue>({
+// Create a memoized row component
+const MemoizedRow = memo(function TableRowMemoized<TData, TValue>({
+	row,
+	onClick,
+}: {
+	row: Row<TData>;
+	onClick: (e: React.MouseEvent, data: TData) => void;
+}) {
+	return (
+		<TableRow
+			key={row.id}
+			data-state={row.getIsSelected() && "selected"}
+			onClick={(e) => onClick(e, row.original as TData)}
+			className="cursor-pointer hover:bg-muted/50"
+		>
+			{row.getVisibleCells().map((cell) => (
+				<TableCell key={cell.id}>
+					{flexRender(cell.column.columnDef.cell, cell.getContext())}
+				</TableCell>
+			))}
+		</TableRow>
+	);
+});
+
+// Wrap the DataTable component with React.memo
+export const DataTable = memo(function DataTable<TData, TValue>({
 	columns,
 	data,
 	name = "",
@@ -436,21 +462,11 @@ export function DataTable<TData, TValue>({
 				<TableBody>
 					{table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => (
-							<TableRow
+							<MemoizedRow 
 								key={row.id}
-								data-state={row.getIsSelected() && "selected"}
-								onClick={(e) => handleRowClick(e, row.original as TData)}
-								className="cursor-pointer hover:bg-muted/50"
-							>
-								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id}>
-										{flexRender(
-											cell.column.columnDef.cell,
-											cell.getContext(),
-										)}
-									</TableCell>
-								))}
-							</TableRow>
+								row={row}
+								onClick={handleRowClick}
+							/>
 						))
 					) : (<></>
 						// <TableRow>
@@ -558,4 +574,4 @@ export function DataTable<TData, TValue>({
 			</Dialog>
 		</div>
 	);
-}
+});
