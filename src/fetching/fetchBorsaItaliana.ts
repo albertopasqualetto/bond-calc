@@ -69,6 +69,14 @@ function parseBorsaItalianaData(
 export async function fetchBorsaItalianaData(
 	isin: string,
 ): Promise<BorsaItalianaData> {
+	if (!import.meta.env.VITE_WRAP_API_KEY) {
+		throw new Error("Missing WrapAPI key");
+	}
+
+	if (!isin || isin.length !== 12) {
+		throw new Error("Bad ISIN");
+	}
+
 	const url = `https://wrapapi.com/use/albertopasqualetto/borsa_italiana/get/1.0.3?wrapAPIKey=${import.meta.env.VITE_WRAP_API_KEY}&ISIN=${isin}`;
 
 	try {
@@ -123,4 +131,4 @@ async function getBondData() {
 }
 
 // Call the function
-getBondData();
+// getBondData();
