@@ -6,7 +6,6 @@ import App from './App.tsx'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <>
-      {console.log(`App version: ${__COMMIT_HASH__}`)}
       <App />
     </>
   </StrictMode>,

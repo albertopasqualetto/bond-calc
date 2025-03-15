@@ -63,3 +63,4 @@ export default tseslint.config({
 - [ ] Switch vite to production mode
 - [ ] Better locale management
 - [ ] Date input increase/decrease with keyboard
+- [ ] Show other details when clicking row
