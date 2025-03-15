@@ -58,9 +58,10 @@ export default tseslint.config({
 
 - [ ] Tenere simbolo euro?
 - [ ] Dark mode
-- [ ] internationalization
 - [ ] Fix types
-- [ ] Switch vite to production mode
+- [ ] internationalization
 - [ ] Better locale management
+- [ ] Switch vite to production mode
 - [ ] Date input increase/decrease with keyboard
 - [ ] Show other details when clicking row
+- [ ] Fix errors

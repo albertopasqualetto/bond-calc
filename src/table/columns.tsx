@@ -103,7 +103,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 	},
 	{
 		accessorKey: "maturityDate",
-		header: "Data Scadenza",
+		header: "Scadenza",
 		meta: { printable: false },
 		cell: (props) => (
 			<EditableDatePickerCell
@@ -113,7 +113,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 	},
 	{
 		accessorKey: "couponRatePerc",
-		header: "Tasso Cedola",
+		header: "Cedola",
 		meta: { printable: false },
 		cell: (props) => {
 			const value = props.getValue();
@@ -134,8 +134,9 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 		meta: { printable: false },
 		cell: (props) => (
 			<EditableSelectCell
-				{...(props as CellContext<FinancialAsset, number>)}
+				{...(props as CellContext<FinancialAsset, string>)}
 				options={[
+					{ label: "0%", value: "0" },
 					{ label: "12,5%", value: "12.5" },
 					{ label: "26%", value: "26" },
 				]}
@@ -146,7 +147,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 	},
 	{
 		accessorKey: "settlementDate",
-		header: "Data Acquisto",
+		header: "Data PMC",
 		cell: (props) => (
 			<EditableDatePickerCell
 				{...(props as CellContext<FinancialAsset, Date>)}
@@ -155,7 +156,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 	},
 	{
 		accessorKey: "settlementPrice",
-		header: "Prezzo Acquisto",
+		header: "PMC",
 		cell: (props) => {
 			const value = props.getValue();
 			const isValid = isValidNumber(value);
@@ -171,7 +172,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 	},
 	{
 		accessorKey: "redemptionPrice",
-		header: "Prezzo Rimborso",
+		header: "Rimborso",
 		cell: (props) => {
 			const value = props.getValue();
 			const isValid = isValidNumber(value);

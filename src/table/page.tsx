@@ -39,6 +39,7 @@ function mockData(): FinancialAssetRow[] {
 		{
 			...JSON.parse(JSON.stringify(asset1.dict)),
 			name: "Btp Tf 0,5% Lg28 Eur",
+			capitalGainTaxPerc: (asset1.dict.capitalGainTaxPerc as string),
 			settlementDate: new Date(asset1.dict.settlementDate as string),
 			maturityDate: new Date(asset1.dict.maturityDate as string),
 			annualYieldGross: asset1.computeYield(),
@@ -51,6 +52,7 @@ function mockData(): FinancialAssetRow[] {
 		{
 			...JSON.parse(JSON.stringify(asset2.dict)),
 			name: "Btp Tf 2,15% Mz72 Eur",
+			capitalGainTaxPerc: (asset2.dict.capitalGainTaxPerc as string),
 			settlementDate: new Date(asset2.dict.settlementDate as string),
 			maturityDate: new Date(asset2.dict.maturityDate as string),
 			annualYieldGross: asset2.computeYield(),
