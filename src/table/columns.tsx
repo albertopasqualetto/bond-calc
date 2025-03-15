@@ -19,6 +19,10 @@ export type FinancialAssetRow = FinancialAsset & {
 	todayPrice?: number;
 	annualYieldGrossToday?: number;
 	annualYieldNetToday?: number;
+	assetCount?: number;
+	totalValueSettlement?: number;
+	totalValueToday?: number;
+	totalValueDifference?: number;
 	notes?: string;
 };
 
@@ -97,6 +101,21 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				<EditableTextCell
 					{...(props as CellContext<FinancialAsset, string>)}
 					className={"w-[24ch] min-w-[24ch]"}
+				/>
+			);
+		},
+	},
+	{
+		accessorKey: "assetCount",
+		header: "Nominale",
+		cell: (props) => {
+			const value = props.getValue();
+			const isValid = isValidNumber(value);
+			return (
+				<EditableTextCell
+					{...(props as CellContext<FinancialAsset, number>)}
+					className={`min-w-[9ch] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
+					onKeyDown={validateNumericInput}
 				/>
 			);
 		},
@@ -194,11 +213,11 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				header: "Lordo",
 				cell: (props) => {
 					return (
-						<span className="flex">
-							<span className="mr-auto font-bold">
+						<span className="flex font-bold">
+							<span className="mr-auto">
 								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
 							</span>
-							<span className="font-bold">%</span>
+							<span>%</span>
 						</span>
 					);
 				},
@@ -208,11 +227,11 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				header: "Netto",
 				cell: (props) => {
 					return (
-						<span className="flex">
-							<span className="mr-auto font-bold">
+						<span className="flex font-bold">
+							<span className="mr-auto">
 								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
 							</span>
-							<span className="font-bold">%</span>
+							<span>%</span>
 						</span>
 					);
 				},
@@ -243,11 +262,11 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				header: "Lordo",
 				cell: (props) => {
 					return (
-						<span className="flex">
-							<span className="mr-auto font-bold italic">
+						<span className="flex font-bold italic">
+							<span className="mr-auto">
 								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
 							</span>
-							<span className="font-bold italic">%</span>
+							<span>%</span>
 						</span>
 					);
 				},
@@ -257,11 +276,66 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				header: "Netto",
 				cell: (props) => {
 					return (
-						<span className="flex">
-							<span className="mr-auto font-bold italic">
+						<span className="flex font-bold italic">
+							<span className="mr-auto">
 								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
 							</span>
-							<span className="font-bold italic">%</span>
+							<span>%</span>
+						</span>
+					);
+				},
+			},
+		],
+	},
+	{
+		header: "Controvalore",
+		columns: [
+			{
+				accessorKey: "totalValueSettlement",
+				header: "Acquisto",
+				cell: (props) => {
+					return (
+						<span className="flex font-bold">
+							<span className="mr-auto">
+								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
+							</span>
+							<span>€</span>
+						</span>
+					);
+				},
+			},
+			{
+				accessorKey: "totalValueToday",
+				header: "Oggi",
+				cell: (props) => {
+					return (
+						<span className="flex font-bold">
+							<span className="mr-auto">
+								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
+							</span>
+							<span>€</span>
+						</span>
+					);
+				},
+			},
+			{
+				accessorKey: "totalValueDifference",
+				header: "Differenza",
+				cell: (props) => {
+					const value = (props as CellContext<FinancialAsset, number>).getValue();
+					const isPositive = value > 0;
+					const isNegative = value < 0;
+					const textColorClass = isPositive ? "text-green-600" : isNegative ? "text-red-600" : "";
+
+					return (
+						<span className={`flex font-bold ${textColorClass}`}>
+							{value !== undefined && value !== null && (
+								<span>{isPositive ? "+" : isNegative ? "-" : ""}</span>
+							)}
+							<span className="mr-auto">
+								{value?.toFixed(2)}
+							</span>
+							<span>€</span>
 						</span>
 					);
 				},

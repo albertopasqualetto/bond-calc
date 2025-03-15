@@ -47,6 +47,7 @@ function mockData(): FinancialAssetRow[] {
 			todayPrice: 92.81,
 			annualYieldGrossToday: asset1.computeYield(new Date(), 92.81),
 			annualYieldNetToday: asset1.computeYieldNet(new Date(), 92.81),
+			assetCount: 1000,
 			notes: "Test note 1",
 		},
 		{
@@ -60,6 +61,7 @@ function mockData(): FinancialAssetRow[] {
 			todayPrice: 57.8,
 			annualYieldGrossToday: asset2.computeYield(new Date(), 57.8),
 			annualYieldNetToday: asset2.computeYieldNet(new Date(), 57.8),
+			assetCount: 2000,
 			notes: "Test note 2",
 		},
 	];
@@ -117,6 +119,10 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 			todayPrice: NaN,
 			annualYieldGrossToday: NaN,
 			annualYieldNetToday: NaN,
+			assetCount: NaN,
+			totalValueSettlement: NaN,
+			totalValueToday: NaN,
+			totalValueDifference: NaN,
 			notes: ""
 		};
 
@@ -328,6 +334,28 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 								}
 							} catch (error) {
 								console.error("Error calculating yield:", error);
+							}
+						}
+
+						const calculateValueRelevantFields = [
+							"assetCount",
+							"settlementPrice",
+							"todayPrice",
+							"annualYieldNet",
+							"annualYieldNetToday",
+						];
+
+						if (calculateValueRelevantFields.includes(columnId)) {
+							console.log("-------------------------------------------------\nCalculating value for :", updatedRow.isin);
+							if (updatedRow.assetCount){
+								updatedRow.totalValueSettlement = updatedRow.settlementPrice * updatedRow.assetCount;
+								updatedRow.totalValueToday = updatedRow.todayPrice ? updatedRow.todayPrice * updatedRow.assetCount : NaN;
+								updatedRow.totalValueDifference = updatedRow.totalValueToday - updatedRow.totalValueSettlement;
+							} else {
+								console.warn("Total value is missing for calculation");
+								updatedRow.totalValueSettlement = NaN;
+								updatedRow.totalValueToday = NaN;
+								updatedRow.totalValueDifference = NaN;
 							}
 						}
 
