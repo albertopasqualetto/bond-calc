@@ -238,6 +238,68 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>((op
     }
   }, [segments, curSegment]);
 
+  const onSegmentValueChange = useEventCallback(
+    (direction: 'up' | 'down') => {
+      if (!curSegment) return;
+      
+      if (curSegment.type === 'period') {
+        // Toggle between AM and PM
+        const newValue = curSegment.value === 'AM' ? 'PM' : 'AM';
+        const updatedSegments = segments.map(s => 
+          s.index === curSegment.index ? { ...curSegment, value: newValue } : s
+        );
+        setSegments(updatedSegments);
+        setSelection(inputRef, updatedSegments.find(s => s.index === curSegment.index));
+        return;
+      }
+      
+      if (curSegment.type !== 'space') {
+        // Get current value and handle empty case
+        const currentValue = curSegment.value ? parseInt(curSegment.value) : 0;
+        let newValue;
+        
+        // Adjust value based on segment type
+        switch (curSegment.type) {
+          case 'year':
+            newValue = direction === 'up' ? currentValue + 1 : currentValue - 1;
+            newValue = Math.max(1900, Math.min(2099, newValue));
+            break;
+          case 'month':
+            newValue = direction === 'up' ? currentValue + 1 : currentValue - 1;
+            newValue = ((newValue - 1) % 12 + 12) % 12 + 1; // 1-12 range
+            break;
+          case 'date':
+            newValue = direction === 'up' ? currentValue + 1 : currentValue - 1;
+            newValue = ((newValue - 1) % 31 + 31) % 31 + 1; // 1-31 range
+            break;
+          case 'hour':
+            const isH24 = curSegment.symbols.includes('H');
+            const maxHour = isH24 ? 23 : 12;
+            const minHour = isH24 ? 0 : 1;
+            newValue = direction === 'up' ? currentValue + 1 : currentValue - 1;
+            newValue = ((newValue - minHour) % (maxHour - minHour + 1) + (maxHour - minHour + 1)) % (maxHour - minHour + 1) + minHour;
+            break;
+          case 'minute':
+          case 'second':
+            newValue = direction === 'up' ? currentValue + 1 : currentValue - 1;
+            newValue = (newValue % 60 + 60) % 60;
+            break;
+          default:
+            return;
+        }
+        
+        const updatedSegments = segments.map(s => 
+          s.index === curSegment.index ? 
+          { ...curSegment, value: newValue.toString().padStart(curSegment.symbols.length, '0') } : 
+          s
+        );
+        setSegments(updatedSegments);
+        setSelection(inputRef, updatedSegments.find(s => s.index === curSegment.index));
+      }
+    },
+    [segments, curSegment]
+  );
+
   const onKeyDown = useEventCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
     const key = event.key;
     setSelection(inputRef, curSegment);
@@ -248,11 +310,11 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>((op
         onSegmentChange(key === 'ArrowRight' ? 'right' : 'left');
         event.preventDefault();
         break;
-      // case 'ArrowUp':
-      // case 'ArrowDown':
-      //   // onSegmentValueChange?.(event);
-      //   event.preventDefault();
-      //   break;
+      case 'ArrowUp':
+      case 'ArrowDown':
+        onSegmentValueChange(key === 'ArrowUp' ? 'up' : 'down');
+        event.preventDefault();
+        break;
       case 'Backspace':
         onSegmentValueRemove();
         event.preventDefault();
