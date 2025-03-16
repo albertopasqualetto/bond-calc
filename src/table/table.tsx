@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { FinancialAssetRow, columns } from "./columns";
 import { DataTable } from "./template";
 import { createDate, isDateToday } from "@/utils/date";
+import { normalizeNumber } from "@/utils/number";
 import { fetchBorsaItalianaData } from "@/fetching/fetchBorsaItaliana";
 import { FinancialAsset } from "@/lib/financialAsset";
 
@@ -348,6 +349,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 						if (calculateValueRelevantFields.includes(columnId)) {
 							console.log("-------------------------------------------------\nCalculating value for :", updatedRow.isin);
 							if (updatedRow.totalValueNominal){
+								updatedRow.totalValueNominal = normalizeNumber(updatedRow.totalValueNominal);
 								updatedRow.totalValueSettlement = (updatedRow.totalValueNominal / updatedRow.redemptionPrice) * updatedRow.settlementPrice;
 								updatedRow.totalValueToday = updatedRow.todayPrice ? (updatedRow.totalValueNominal / updatedRow.redemptionPrice) * updatedRow.todayPrice : NaN;
 								updatedRow.totalValueDifference = updatedRow.totalValueToday - updatedRow.totalValueSettlement;

@@ -142,7 +142,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				<SuffixEditableTextCell
 					{...(props as CellContext<FinancialAsset, number>)}
 					suffix="%"
-					className={`min-w-[4em] max-w-[6em] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
+					className={`min-w-[5em] max-w-[6em] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
 					onKeyDown={validateNumericInput}
 				/>
 			);
