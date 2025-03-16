@@ -348,7 +348,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 		cell: (props) => (
 			<EditableTextCell
 				{...(props as CellContext<FinancialAsset, string>)}
-				className="w-full min-w-[18ch] max-w-[40ch]"
+				className="w-full h-auto min-w-[18ch] max-w-[21ch] resize-y overflow-hidden"
 				multiline={true}
 			/>
 		),

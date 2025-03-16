@@ -369,7 +369,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		};
 
 	return (
-		<div className="px-5 mx-auto py-10">
+		<div className="px-4 mx-auto py-5">
 			<DataTable
 				columns={columns}
 				data={data}

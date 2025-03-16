@@ -32,6 +32,8 @@ export const EditableTextCell = <T extends object>({
 	const initialValue = getValue();
 	const [value, setValue] = useState(initialValue);
 
+	className = cn("print:w-full print:resize-none print:overflow-visible", className);
+
 	useEffect(() => {
 		setValue(initialValue);
 	}, [initialValue]);

@@ -3,6 +3,7 @@ import YieldsTable from "./table/table"
 import { Button } from "@/components/ui/button"
 import { PenLine, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import "./print.css"
 
 export default function App() {
 	const [name, setName] = useState("");
@@ -28,9 +29,6 @@ export default function App() {
 
 	return (
 		<>
-			<style type="text/css" media="print">
-				{`@page { size: landscape; }`}
-			</style>
 			<div className="flex items-baseline justify-center mt-4">
 				<span className="text-4xl font-extrabold tracking-tight lg:text-5xl">
 					Financial Assets of
