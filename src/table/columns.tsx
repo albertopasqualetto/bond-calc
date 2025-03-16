@@ -7,7 +7,7 @@ import {
 	EditableDatePickerCell,
 	SuffixEditableTextCell,
 	EditableSelectCell,
-} from "./editable-fields";
+} from "@/components/table-editable-fields/editable-fields";
 import { FinancialAsset } from "@/lib/financialAsset";
 
 // This type is used to define the shape of our data.
