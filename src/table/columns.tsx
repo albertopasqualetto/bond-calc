@@ -19,7 +19,7 @@ export type FinancialAssetRow = FinancialAsset & {
 	todayPrice?: number;
 	annualYieldGrossToday?: number;
 	annualYieldNetToday?: number;
-	assetCount?: number;
+	totalValueNominal?: number;
 	totalValueSettlement?: number;
 	totalValueToday?: number;
 	totalValueDifference?: number;
@@ -106,15 +106,16 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 		},
 	},
 	{
-		accessorKey: "assetCount",
+		accessorKey: "totalValueNominal",
 		header: "Nominale",
 		cell: (props) => {
 			const value = props.getValue();
 			const isValid = isValidNumber(value);
 			return (
-				<EditableTextCell
+				<SuffixEditableTextCell
 					{...(props as CellContext<FinancialAsset, number>)}
-					className={`min-w-[9ch] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
+					suffix="€"
+					className={`min-w-[11ch] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
 					onKeyDown={validateNumericInput}
 				/>
 			);

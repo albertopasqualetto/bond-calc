@@ -47,7 +47,7 @@ function mockData(): FinancialAssetRow[] {
 			todayPrice: 92.81,
 			annualYieldGrossToday: asset1.computeYield(new Date(), 92.81),
 			annualYieldNetToday: asset1.computeYieldNet(new Date(), 92.81),
-			assetCount: 1000,
+			totalValueNominal: 1000,
 			notes: "Test note 1",
 		},
 		{
@@ -61,7 +61,7 @@ function mockData(): FinancialAssetRow[] {
 			todayPrice: 57.8,
 			annualYieldGrossToday: asset2.computeYield(new Date(), 57.8),
 			annualYieldNetToday: asset2.computeYieldNet(new Date(), 57.8),
-			assetCount: 2000,
+			totalValueNominal: 2000,
 			notes: "Test note 2",
 		},
 	];
@@ -119,7 +119,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 			todayPrice: NaN,
 			annualYieldGrossToday: NaN,
 			annualYieldNetToday: NaN,
-			assetCount: NaN,
+			totalValueNominal: NaN,
 			totalValueSettlement: NaN,
 			totalValueToday: NaN,
 			totalValueDifference: NaN,
@@ -338,7 +338,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 						}
 
 						const calculateValueRelevantFields = [
-							"assetCount",
+							"totalValueNominal",
 							"settlementPrice",
 							"todayPrice",
 							"annualYieldNet",
@@ -347,9 +347,9 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 
 						if (calculateValueRelevantFields.includes(columnId)) {
 							console.log("-------------------------------------------------\nCalculating value for :", updatedRow.isin);
-							if (updatedRow.assetCount){
-								updatedRow.totalValueSettlement = updatedRow.settlementPrice * updatedRow.assetCount;
-								updatedRow.totalValueToday = updatedRow.todayPrice ? updatedRow.todayPrice * updatedRow.assetCount : NaN;
+							if (updatedRow.totalValueNominal){
+								updatedRow.totalValueSettlement = (updatedRow.totalValueNominal / updatedRow.redemptionPrice) * updatedRow.settlementPrice;
+								updatedRow.totalValueToday = updatedRow.todayPrice ? (updatedRow.totalValueNominal / updatedRow.redemptionPrice) * updatedRow.todayPrice : NaN;
 								updatedRow.totalValueDifference = updatedRow.totalValueToday - updatedRow.totalValueSettlement;
 							} else {
 								console.warn("Total value is missing for calculation");

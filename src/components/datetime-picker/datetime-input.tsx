@@ -241,23 +241,23 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>((op
   const onSegmentValueChange = useEventCallback(
     (direction: 'up' | 'down') => {
       if (!curSegment) return;
-      
+
       if (curSegment.type === 'period') {
         // Toggle between AM and PM
         const newValue = curSegment.value === 'AM' ? 'PM' : 'AM';
-        const updatedSegments = segments.map(s => 
+        const updatedSegments = segments.map(s =>
           s.index === curSegment.index ? { ...curSegment, value: newValue } : s
         );
         setSegments(updatedSegments);
         setSelection(inputRef, updatedSegments.find(s => s.index === curSegment.index));
         return;
       }
-      
+
       if (curSegment.type !== 'space') {
         // Get current value and handle empty case
         const currentValue = curSegment.value ? parseInt(curSegment.value) : 0;
         let newValue;
-        
+
         // Adjust value based on segment type
         switch (curSegment.type) {
           case 'year':
@@ -287,10 +287,10 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>((op
           default:
             return;
         }
-        
-        const updatedSegments = segments.map(s => 
-          s.index === curSegment.index ? 
-          { ...curSegment, value: newValue.toString().padStart(curSegment.symbols.length, '0') } : 
+
+        const updatedSegments = segments.map(s =>
+          s.index === curSegment.index ?
+          { ...curSegment, value: newValue.toString().padStart(curSegment.symbols.length, '0') } :
           s
         );
         setSegments(updatedSegments);

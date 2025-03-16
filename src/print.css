@@ -5,9 +5,6 @@
 	}
 	table {
 		width: 100%;
-		zoom: 80%;
+		zoom: 75%;	/* Change this to fit table */
 	}
-	/* textarea {
-		resize: none;
-	} */
 }
