@@ -18,8 +18,8 @@ export interface BorsaItalianaData {
 		issuingDate: Date;
 		maturityDate: Date;
 		couponFrequency: number;
-		periodicCouponRate: number;
-		couponRate: number;	// TODO remove this
+		periodicCouponRatePerc: number;
+		yearlyCouponRatePerc: number;
 		couponRatePerc: number;
 	};
 	webpage: string;
@@ -40,7 +40,7 @@ function convertCouponFrequency(frequency: string): number {
 		"Bimestrale": 6,
 		"Quadrimestrale": 3,
 		"Giornaliero": 365,
-		"Zero Coupon": 0
+		"Zero Coupon": 0	// Tassazione zero coupon?
 	};
 
 	// Convert to lowercase, remove extra spaces, and find in the map
@@ -77,7 +77,7 @@ export async function fetchBorsaItalianaData(
 		throw new Error("Bad ISIN");
 	}
 
-	const url = `https://wrapapi.com/use/albertopasqualetto/borsa_italiana/get/1.0.3?wrapAPIKey=${import.meta.env.VITE_WRAP_API_KEY}&ISIN=${isin}`;
+	const url = `https://wrapapi.com/use/albertopasqualetto/borsa_italiana/get/1.0.4?wrapAPIKey=${import.meta.env.VITE_WRAP_API_KEY}&ISIN=${isin}`;
 
 	try {
 		const response = await fetch(url);
@@ -104,12 +104,11 @@ export async function fetchBorsaItalianaData(
 		if (data.info.maturityDate < data.info.issuingDate) { // Adjust incorrect parsing of YY formatted date
 			data.info.maturityDate.setFullYear(data.info.maturityDate.getFullYear() + 100);
 		}
-		data.info.periodicCouponRate = parseFloat(String(data.info.periodicCouponRate).replace(",", "."));
-		data.info.couponRate = data.info.periodicCouponRate * data.info.couponFrequency;
-		data.info.couponRatePerc = data.info.couponRate;
+		data.info.periodicCouponRatePerc = parseFloat(String(data.info.periodicCouponRatePerc).replace(",", "."));
+		data.info.yearlyCouponRatePerc = parseFloat(String(data.info.yearlyCouponRatePerc).replace(",", "."));
+		data.info.couponRatePerc = !isNaN(data.info.periodicCouponRatePerc) ? data.info.periodicCouponRatePerc * data.info.couponFrequency : data.info.yearlyCouponRatePerc;
 
-
-		// console.log(data);
+		console.log(data);
 		return data;
 	} catch (error) {
 		console.error("Error fetching Borsa Italiana data:", error);
@@ -120,7 +119,7 @@ export async function fetchBorsaItalianaData(
 // Example usage
 async function getBondData() {
 	try {
-		const isin = "IT0005441883";
+		const isin = "IT0005582421";
 		const data = await fetchBorsaItalianaData(isin);
 
 		console.log(data);
@@ -132,4 +131,4 @@ async function getBondData() {
 }
 
 // Call the function
-// getBondData();
+getBondData();

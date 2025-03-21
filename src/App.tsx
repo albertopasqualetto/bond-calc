@@ -31,7 +31,7 @@ export default function App() {
 		<>
 			<div className="flex items-baseline justify-center mt-4">
 				<span className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-					Financial Assets of
+					Attività finanziarie di
 				</span>
 				<div className="flex items-baseline">
 					{!isEditing ? (

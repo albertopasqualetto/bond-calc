@@ -219,7 +219,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 														name: bondData.title,
 														issuingDate: bondData.info.issuingDate,
 														maturityDate: bondData.info.maturityDate,
-														couponRatePerc: bondData.info.couponRate,
+														couponRatePerc: bondData.info.couponRatePerc,
 														yearlyFrequency:
 															bondData.info.couponFrequency ||
 															(() => {

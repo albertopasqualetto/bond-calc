@@ -62,6 +62,6 @@ export default tseslint.config({
 - [ ] internationalization
 - [ ] Better locale management
 - [ ] Switch vite to production mode
-- [ ] Date input increase/decrease with keyboard
 - [ ] Show other details when clicking row
 - [ ] Fix errors
+- [ ] Rewrite APIs in TypeScript or Python
