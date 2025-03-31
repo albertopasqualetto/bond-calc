@@ -12,6 +12,7 @@ export default defineConfig({
     },
   },
   define: {
+    'process.env': process.env  // TODO: check if this works after build
   },
   base: "/",
   preview: {

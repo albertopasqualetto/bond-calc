@@ -65,3 +65,4 @@ export default tseslint.config({
 - [ ] Show other details when clicking row
 - [ ] Fix errors
 - [ ] Rewrite APIs in TypeScript or Python
+- [ ] Fallback su cache in localstorage se API non disponibili

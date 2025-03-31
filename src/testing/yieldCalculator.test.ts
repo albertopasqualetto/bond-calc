@@ -63,4 +63,20 @@ describe('Bond Yield Calculator', () => {
 		console.log(annualYield);
 		expect(annualYield).toBeCloseTo(couponRatePerc, 0);
 	});
+
+	test('IT0005024234 @ 31/03/2025', () => {
+		const bond = new FinancialAsset(
+			"IT0005024234",
+			createDate(2025, 3, 31),
+			createDate(2030, 3, 15),
+			3.5,
+			102.98,
+			100,
+			2
+		);
+		console.log("Cashflows", bond.toIrrCashflows());
+		const annualYield = bond.computeYield();
+		console.log(annualYield);
+		expect(annualYield).toBeCloseTo(2.86, 0);
+	});
 });

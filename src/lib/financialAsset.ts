@@ -76,7 +76,15 @@ export class FinancialAsset {
 	 * Get the bond's coupon cashflows
 	 */
 	get couponCashflows(): Cashflow[] {
-		return structuredClone(this._couponCashflows); // Return a deep copy to prevent direct mutation
+		let cashflows = structuredClone(this._couponCashflows);	// Deep copy using structuredClone
+		if (process.env.JEST_WORKER_ID !== undefined) {
+			// If running in Jest, fix Date copy by creating new Date objects
+			cashflows = cashflows.map(cashflow => ({
+				amount: cashflow.amount,
+				date: new Date(cashflow.date)
+			}));
+		}
+		return cashflows;
 	}
 
 	/**
@@ -192,7 +200,7 @@ export class FinancialAsset {
 	 * Generates full IRR cashflows on demand using coupon cashflows
 	 */
 	toIrrCashflows(newRedemptionDate?: Date, newRedemptionPrice?: number, net: boolean = false): Cashflow[] {
-		let cashflows = structuredClone(this._couponCashflows);	// Deep copy using structuredClone
+		let cashflows = this.couponCashflows;
 
 		const capitalGainTax = net ? this.capitalGainTaxPerc / 100 : 0;
 
