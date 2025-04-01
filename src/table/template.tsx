@@ -449,7 +449,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 									<TableHead
 										key={header.id}
 										colSpan={header.colSpan}
-										className="p-1 bg-background hover:bg-background"
+										className="p-1 bg-background hover:bg-background text-black"
 									>
 										{header.isPlaceholder
 											? null

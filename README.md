@@ -66,3 +66,4 @@ export default tseslint.config({
 - [ ] Fix errors
 - [ ] Rewrite APIs in TypeScript or Python
 - [ ] Fallback su cache in localstorage se API non disponibili
+- [ ] Punti divisore migliaia
