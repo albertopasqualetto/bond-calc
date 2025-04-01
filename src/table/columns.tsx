@@ -227,6 +227,10 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				accessorKey: "annualYieldNet",
 				header: "Netto",
 				cell: (props) => {
+					if (props.row.original.capitalGainTaxPerc == 0) {
+						return null; // Hide the value if tax is 0%
+					}
+
 					return (
 						<span className="flex font-bold">
 							<span className="mr-auto">
@@ -276,6 +280,10 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				accessorKey: "annualYieldNetToday",
 				header: "Netto",
 				cell: (props) => {
+					if (props.row.original.capitalGainTaxPerc == 0) {
+						return null; // Hide the value if tax is 0%
+					}
+
 					return (
 						<span className="flex font-bold italic">
 							<span className="mr-auto">
