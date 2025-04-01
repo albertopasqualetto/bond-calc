@@ -227,8 +227,8 @@ export class FinancialAsset {
 			couponDateBeforeRedemption,
 		);
 
-		// Add redemption value to the last coupon payment (typically at maturity)
-		const capitalGainTaxAmount = (redemptionPrice + accruedInterestAmountRedemption - this.settlementPrice) * capitalGainTax;
+		// Add redemption value to the last coupon payment (typically at maturity) (does not take into account accruedInterestAmountSettlement)
+		const capitalGainTaxAmount = (redemptionPrice - this.settlementPrice) * capitalGainTax;
 
 		// Filter and keep all cashflows after settlementDate and before redemptionDate
 		cashflows = cashflows.filter(cashflow => cashflow.date > this.settlementDate && cashflow.date <= redemptionDate);
