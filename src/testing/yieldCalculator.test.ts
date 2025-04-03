@@ -1,7 +1,5 @@
 import { FinancialAsset, Cashflow } from '../lib/financialAsset';
 import { createDate } from '../utils/date';
-// import { Finance } from 'financejs'
-// const finance = new Finance();
 
 
 describe('Bond Yield Calculator', () => {

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Download, Upload } from "lucide-react";
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { cn } from "@/lib/utils"
 
 interface DataTableProps<TData, TValue> {
@@ -91,6 +92,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [isPrinting, setIsPrinting] = useState(false);
+	const [parent, _] = useAutoAnimate(/* optional config */);
 
 	// Set up print media query listener
 	useEffect(() => {
@@ -440,7 +442,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 
 	return (
 		<div className="rounded-md border">
-			<Table className="border-collapse leading-tight">
+			<Table className="border-collapse leading-tight overflow-hidden">
 				<TableHeader className="bg-background hover:bg-background">
 					{table.getHeaderGroups().map((headerGroup) => (
 						<TableRow key={headerGroup.id} className="hover:bg-background">
@@ -463,7 +465,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 						</TableRow>
 					))}
 				</TableHeader>
-				<TableBody>
+				<TableBody ref={parent} className="overflow-hidden w-full">
 					{table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => (
 							<MemoizedRow
