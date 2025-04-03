@@ -87,7 +87,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 			return (
 				<EditableTextCell
 					{...(props as CellContext<FinancialAsset, string>)}
-					className={`w-[15ch] min-w-[15ch] max-w-[15ch] ${!isValid && value ? 'border-red-500 bg-red-50' : ''}`}
+					className={`w-[15ch] min-w-[15ch] max-w-[15ch] ${!isValid && value ? 'border-red-500 bg-red-500/10' : ''}`}
 					placeholder="ISIN"
 				/>
 			);
@@ -115,7 +115,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				<SuffixEditableTextCell
 					{...(props as CellContext<FinancialAsset, number>)}
 					suffix="€"
-					className={`min-w-[11ch] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
+					className={`min-w-[11ch] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
 					onKeyDown={validateNumericInput}
 				/>
 			);
@@ -142,7 +142,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				<SuffixEditableTextCell
 					{...(props as CellContext<FinancialAsset, number>)}
 					suffix="%"
-					className={`min-w-[5em] max-w-[6em] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
+					className={`min-w-[5em] max-w-[6em] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
 					onKeyDown={validateNumericInput}
 				/>
 			);
@@ -184,7 +184,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				<SuffixEditableTextCell
 					{...(props as CellContext<FinancialAsset, number>)}
 					suffix="€"
-					className={`min-w-[6em] max-w-[8em] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
+					className={`min-w-[6em] max-w-[8em] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
 					onKeyDown={validateNumericInput}
 				/>
 			);
@@ -200,7 +200,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 				<SuffixEditableTextCell
 					{...(props as CellContext<FinancialAsset, number>)}
 					suffix="€"
-					className={`min-w-[6em] max-w-[8em] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
+					className={`min-w-[6em] max-w-[8em] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
 					onKeyDown={validateNumericInput}
 				/>
 			);
@@ -256,7 +256,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 						<SuffixEditableTextCell
 							{...(props as CellContext<FinancialAsset, number>)}
 							suffix="€"
-							className={`min-w-[6em] max-w-[8em] ${!isValid ? 'border-red-500 bg-red-50' : ''}`}
+							className={`min-w-[6em] max-w-[8em] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
 							onKeyDown={validateNumericInput}
 						/>
 					);

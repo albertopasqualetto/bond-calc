@@ -1,0 +1,27 @@
+/* Scrollbar styles */
+body {
+    --scrollbar-color-thumb: var(--muted-foreground);
+    --scrollbar-color-track: var(--muted);
+    --scrollbar-width: auto;
+    --scrollbar-width-legacy: 10px;
+}
+/* Modern browsers with `scrollbar-*` support */
+@supports (scrollbar-width: auto) {
+    body {
+        scrollbar-color: var(--scrollbar-color-thumb) var(--scrollbar-color-track);
+        scrollbar-width: var(--scrollbar-width);
+    }
+}
+/* Legacy browsers with `::-webkit-scrollbar-*` support */
+@supports selector(::-webkit-scrollbar) {
+    body::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-color-thumb);
+    }
+    body::-webkit-scrollbar-track {
+        background: var(--scrollbar-color-track);
+    }
+    body::-webkit-scrollbar {
+        max-width: var(--scrollbar-width-legacy);
+        max-height: var(--scrollbar-width-legacy);
+    }
+}

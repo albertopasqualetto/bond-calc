@@ -451,7 +451,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 									<TableHead
 										key={header.id}
 										colSpan={header.colSpan}
-										className="p-1 bg-background hover:bg-background text-black"
+										className="p-1 bg-background hover:bg-background text-black dark:text-foreground"
 									>
 										{header.isPlaceholder
 											? null
@@ -491,7 +491,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 					<Button
 						onClick={handleExportData}
 						variant="outline"
-						className="cursor-pointer"
+						className="cursor-pointer transition-colors"
 						disabled={!table.getRowModel().rows.length}
 					>
 						<Download className="mr-2 h-4 w-4" /> Export
@@ -499,7 +499,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 					<Button
 						onClick={handleImportClick}
 						variant="outline"
-						className="cursor-pointer"
+						className="cursor-pointer transition-colors"
 					>
 						<Upload className="mr-2 h-4 w-4" /> Import
 					{/* Hidden file input for import */}
@@ -518,8 +518,8 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 							variant="destructive"
 							onClick={onDeleteAllRows}
 							disabled={!table.getRowModel().rows.length}
-							className={cn("cursor-pointer",
-										meta?.deleteConfirmState && "bg-white-500 text-red-500 border hover:bg-white-500"
+							className={cn("cursor-pointer transition-colors",
+										meta?.deleteConfirmState && "bg-white-500 text-red-500 border"
 									)}
 						>
 							<Trash2 /> {meta?.deleteConfirmState ? "Are you sure?" : "Delete All"}
@@ -528,7 +528,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 					{onAddRow && (
 						<Button
 							onClick={onAddRow}
-							className="cursor-pointer"
+							className="cursor-pointer transition-colors"
 						>
 							<Plus /> Add Row
 						</Button>

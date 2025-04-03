@@ -56,8 +56,6 @@ export default tseslint.config({
 
 # TODOs
 
-- [ ] Tenere simbolo euro?
-- [ ] Dark mode
 - [ ] Fix types
 - [ ] internationalization
 - [ ] Better locale management

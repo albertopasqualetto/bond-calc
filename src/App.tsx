@@ -3,9 +3,41 @@ import YieldsTable from "./table/table"
 import { Button } from "@/components/ui/button"
 import { PenLine, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import "./global.css"
 import "./print.css"
 
 export default function App() {
+	const [darkMode, setDarkMode] = useState(() => 
+		window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+	);
+
+	useEffect(() => {
+		// Apply initial dark mode
+		if (darkMode) {
+			document.documentElement.classList.add("dark");
+			document.body.classList.add("dark");
+		} else {
+			document.documentElement.classList.remove("dark");
+			document.body.classList.remove("dark");
+		}
+
+		// Listen for changes in system preference
+		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		const handleChange = (e: MediaQueryListEvent) => {
+			setDarkMode(e.matches);
+			if (e.matches) {
+				document.documentElement.classList.add("dark");
+				document.body.classList.add("dark");
+			} else {
+				document.documentElement.classList.remove("dark");
+				document.body.classList.remove("dark");
+			}
+		};
+
+		mediaQuery.addEventListener('change', handleChange);
+		return () => mediaQuery.removeEventListener('change', handleChange);
+	}, []);
+
 	const [name, setName] = useState("");
 	const [isEditing, setIsEditing] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
