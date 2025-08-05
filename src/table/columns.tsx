@@ -339,7 +339,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 					return (
 						<span className={`flex font-bold ${textColorClass}`}>
 							{value !== undefined && value !== null && (
-								<span>{isPositive ? "+" : isNegative ? "-" : ""}</span>
+								<span>{isPositive ? "+" : ""}</span>
 							)}
 							<span className="mr-auto">
 								{value?.toFixed(2)}
