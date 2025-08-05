@@ -1,5 +1,5 @@
 import { xirr, convertRate, RateInterval } from "node-irr";
-import { xirr as webcarrotXIRR } from "@webcarrot/xirr";
+// import { xirr as webcarrotXIRR } from "@webcarrot/xirr";
 import { normalizeNumber } from "@/utils/number";
 
 export interface Cashflow {
@@ -274,8 +274,8 @@ export class FinancialAsset {
 		return convertRate(xirr(cashflows).rate, RateInterval.Year) * 100 + FinancialAsset._FAKE_DELTA;
 	}
 
-	computeWebcarrotYieldTest(newRedemptionDate?: Date, newRedemptionPrice?: number): number {
-		const cashflows = this.toIrrCashflows(newRedemptionDate, newRedemptionPrice);
-		return webcarrotXIRR(cashflows) * 100 + FinancialAsset._FAKE_DELTA;
-	}
+	// computeWebcarrotYieldTest(newRedemptionDate?: Date, newRedemptionPrice?: number): number {
+	// 	const cashflows = this.toIrrCashflows(newRedemptionDate, newRedemptionPrice);
+	// 	return webcarrotXIRR(cashflows) * 100 + FinancialAsset._FAKE_DELTA;
+	// }
 }

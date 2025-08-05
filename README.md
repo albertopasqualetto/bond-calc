@@ -56,6 +56,7 @@ export default tseslint.config({
 
 # TODOs
 
+- [ ] If 2 of the same ISBN, when deleting one, the other is being deleted too
 - [ ] Fix types
 - [ ] internationalization
 - [ ] Better locale management

@@ -11,9 +11,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  define: {
-    'process.env': process.env  // TODO: check if this works after build
-  },
+  // define: {
+  //   'process.env': process.env  // TODO: check if this works after build
+  // },
   base: "/",
   preview: {
     port: 8080,
