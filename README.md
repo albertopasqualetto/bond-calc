@@ -63,6 +63,7 @@ export default tseslint.config({
 - [ ] Switch vite to production mode
 - [ ] Show other details when clicking row
 - [ ] Fix errors
-- [ ] Rewrite APIs in TypeScript or Python
+- [ ] Rewrite Borsa Italiana APIs in TypeScript or Python
 - [ ] Fallback su cache in localstorage se API non disponibili
 - [ ] Punti divisore migliaia
+- [ ] Implement tests for fetching data/end-to-end
