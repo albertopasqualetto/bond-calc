@@ -28,6 +28,8 @@ export class FinancialAsset {
 	yearlyFrequency: number;
 	/** Tax percentage on capital gains */
 	capitalGainTaxPerc: number;
+	/** Historical market prices keyed by yyyy-mm-dd */
+	priceByDate?: Record<string, number>;
 	/** Internal storage for coupon cashflows only */
 	private _couponCashflows: Cashflow[];
 
@@ -36,16 +38,6 @@ export class FinancialAsset {
 	/**
 	 * Creates a new Bond instance
 	 */
-	constructor(
-		isin: string | undefined,
-		settlementDate: Date | string,
-		maturityDate: Date | string,
-		couponRatePerc: number | string,
-		settlementPrice: number | string,
-		redemptionPrice: number | string,
-		yearlyFrequency: number | string,
-		capitalGainTaxPerc?: number | string,
-	)
 	constructor(
 		isin: string | undefined,
 		settlementDate: Date | string,
@@ -77,7 +69,9 @@ export class FinancialAsset {
 	 */
 	get couponCashflows(): Cashflow[] {
 		let cashflows = structuredClone(this._couponCashflows);	// Deep copy using structuredClone
-		if (process.env.JEST_WORKER_ID !== undefined) {
+		const jestWorkerId = (globalThis as { process?: { env?: { JEST_WORKER_ID?: string } } })
+			.process?.env?.JEST_WORKER_ID;
+		if (jestWorkerId !== undefined) {
 			// If running in Jest, fix Date copy by creating new Date objects
 			cashflows = cashflows.map(cashflow => ({
 				amount: cashflow.amount,

@@ -12,19 +12,39 @@ import { FinancialAsset } from "@/lib/financialAsset";
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
-export type FinancialAssetRow = FinancialAsset & {
+type FinancialAssetBaseFromModel = Pick<
+	FinancialAsset,
+	| "isin"
+	| "issuingDate"
+	| "settlementDate"
+	| "maturityDate"
+	| "couponRatePerc"
+	| "settlementPrice"
+	| "redemptionPrice"
+	| "yearlyFrequency"
+	| "capitalGainTaxPerc"
+	| "priceByDate"
+>;
+
+export type FinancialAssetBaseRow = Omit<FinancialAssetBaseFromModel, "capitalGainTaxPerc"> & {
+	capitalGainTaxPerc: number | string;
 	name: string;
+	totalValueNominal?: number;
+	notes?: string;
+};
+
+export type FinancialAssetRowCalculated = {
 	annualYieldGross?: number;
 	annualYieldNet?: number;
 	todayPrice?: number;
 	annualYieldGrossToday?: number;
 	annualYieldNetToday?: number;
-	totalValueNominal?: number;
 	totalValueSettlement?: number;
 	totalValueToday?: number;
 	totalValueDifference?: number;
-	notes?: string;
 };
+
+export type FinancialAssetRow = FinancialAssetBaseRow & FinancialAssetRowCalculated;
 
 // Validation function for numeric inputs
 const validateNumericInput = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -72,12 +92,58 @@ const validateNumericInput = (e: KeyboardEvent<HTMLInputElement>) => {
 };
 
 // Helper to check if a value is a valid number
-const isValidNumber = (value: any): boolean => {
+const isValidNumber = (value: unknown): boolean => {
   if (value === undefined || value === null || value === '') return true;
   return !isNaN(parseFloat(String(value))) && isFinite(Number(value));
 };
 
-export const columns: ColumnDef<FinancialAsset>[] = [
+const TAX_OPTIONS = [
+	{ label: "0%", value: "0" },
+	{ label: "12,5%", value: "12.5" },
+	{ label: "26%", value: "26" },
+];
+
+const createEditableNumericCell = (suffix: string, className: string) => {
+	return (props: CellContext<FinancialAssetRow, number>) => {
+		const value = props.getValue();
+		const isValid = isValidNumber(value);
+		return (
+			<SuffixEditableTextCell
+				{...props}
+				suffix={suffix}
+				className={`${className} ${!isValid ? "border-red-500 bg-red-500/10" : ""}`}
+				onKeyDown={validateNumericInput}
+			/>
+		);
+	};
+};
+
+const renderYieldCell = (
+	props: CellContext<FinancialAssetRow, number>,
+	options?: { italic?: boolean; hideWhenZeroTax?: boolean },
+) => {
+	if (options?.hideWhenZeroTax && props.row.original.capitalGainTaxPerc == 0) {
+		return null;
+	}
+
+	return (
+		<span className={`flex font-bold ${options?.italic ? "italic" : ""}`}>
+			<span className="mr-auto">{props.getValue()?.toFixed(2)}</span>
+			<span>%</span>
+		</span>
+	);
+};
+
+const renderEuroValueCell = (props: CellContext<FinancialAssetRow, number>) => {
+	return (
+		<span className="flex font-bold">
+			<span className="mr-auto">{props.getValue()?.toFixed(2)}</span>
+			<span>€</span>
+		</span>
+	);
+};
+
+export const columns: ColumnDef<FinancialAssetRow>[] = [
 	{
 		accessorKey: "isin",
 		header: "ISIN",
@@ -86,7 +152,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 			const isValid = value?.length === 12;
 			return (
 				<EditableTextCell
-					{...(props as CellContext<FinancialAsset, string>)}
+					{...(props as CellContext<FinancialAssetRow, string>)}
 					className={`w-[15ch] min-w-[15ch] max-w-[15ch] ${!isValid && value ? 'border-red-500 bg-red-500/10' : ''}`}
 					placeholder="ISIN"
 				/>
@@ -99,7 +165,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 		cell: (props) => {
 			return (
 				<EditableTextCell
-					{...(props as CellContext<FinancialAsset, string>)}
+					{...(props as CellContext<FinancialAssetRow, string>)}
 					className={"w-[24ch] min-w-[24ch]"}
 				/>
 			);
@@ -108,18 +174,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 	{
 		accessorKey: "totalValueNominal",
 		header: "Nominale",
-		cell: (props) => {
-			const value = props.getValue();
-			const isValid = isValidNumber(value);
-			return (
-				<SuffixEditableTextCell
-					{...(props as CellContext<FinancialAsset, number>)}
-					suffix="€"
-					className={`min-w-[11ch] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
-					onKeyDown={validateNumericInput}
-				/>
-			);
-		},
+		cell: createEditableNumericCell("€", "min-w-[11ch]"),
 	},
 	{
 		accessorKey: "maturityDate",
@@ -127,7 +182,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 		meta: { printable: false },
 		cell: (props) => (
 			<EditableDatePickerCell
-				{...(props as CellContext<FinancialAsset, Date>)}
+				{...(props as CellContext<FinancialAssetRow, Date>)}
 			/>
 		),
 	},
@@ -135,18 +190,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 		accessorKey: "couponRatePerc",
 		header: "Cedola",
 		meta: { printable: false },
-		cell: (props) => {
-			const value = props.getValue();
-			const isValid = isValidNumber(value);
-			return (
-				<SuffixEditableTextCell
-					{...(props as CellContext<FinancialAsset, number>)}
-					suffix="%"
-					className={`min-w-[5em] max-w-[6em] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
-					onKeyDown={validateNumericInput}
-				/>
-			);
-		},
+		cell: createEditableNumericCell("%", "min-w-[5em] max-w-[6em]"),
 	},
 	{
 		accessorKey: "capitalGainTaxPerc",
@@ -154,12 +198,8 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 		meta: { printable: false },
 		cell: (props) => (
 			<EditableSelectCell
-				{...(props as CellContext<FinancialAsset, string>)}
-				options={[
-					{ label: "0%", value: "0" },
-					{ label: "12,5%", value: "12.5" },
-					{ label: "26%", value: "26" },
-				]}
+				{...(props as CellContext<FinancialAssetRow, string>)}
+				options={TAX_OPTIONS}
 				placeholder="Tassazione"
 				className={"w-[6em] gap-1"}
 			/>
@@ -170,41 +210,19 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 		header: "Data PMC",
 		cell: (props) => (
 			<EditableDatePickerCell
-				{...(props as CellContext<FinancialAsset, Date>)}
+				{...(props as CellContext<FinancialAssetRow, Date>)}
 			/>
 		),
 	},
 	{
 		accessorKey: "settlementPrice",
 		header: "PMC",
-		cell: (props) => {
-			const value = props.getValue();
-			const isValid = isValidNumber(value);
-			return (
-				<SuffixEditableTextCell
-					{...(props as CellContext<FinancialAsset, number>)}
-					suffix="€"
-					className={`min-w-[6em] max-w-[8em] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
-					onKeyDown={validateNumericInput}
-				/>
-			);
-		},
+		cell: createEditableNumericCell("€", "min-w-[6em] max-w-[8em]"),
 	},
 	{
 		accessorKey: "redemptionPrice",
 		header: "Rimborso",
-		cell: (props) => {
-			const value = props.getValue();
-			const isValid = isValidNumber(value);
-			return (
-				<SuffixEditableTextCell
-					{...(props as CellContext<FinancialAsset, number>)}
-					suffix="€"
-					className={`min-w-[6em] max-w-[8em] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
-					onKeyDown={validateNumericInput}
-				/>
-			);
-		},
+		cell: createEditableNumericCell("€", "min-w-[6em] max-w-[8em]"),
 	},
 	{
 		header: "Rendimento",
@@ -212,34 +230,12 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 			{
 				accessorKey: "annualYieldGross",
 				header: "Lordo",
-				cell: (props) => {
-					return (
-						<span className="flex font-bold">
-							<span className="mr-auto">
-								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
-							</span>
-							<span>%</span>
-						</span>
-					);
-				},
+				cell: (props) => renderYieldCell(props as CellContext<FinancialAssetRow, number>),
 			},
 			{
 				accessorKey: "annualYieldNet",
 				header: "Netto",
-				cell: (props) => {
-					if (props.row.original.capitalGainTaxPerc == 0) {
-						return null; // Hide the value if tax is 0%
-					}
-
-					return (
-						<span className="flex font-bold">
-							<span className="mr-auto">
-								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
-							</span>
-							<span>%</span>
-						</span>
-					);
-				},
+				cell: (props) => renderYieldCell(props as CellContext<FinancialAssetRow, number>, { hideWhenZeroTax: true }),
 			},
 		],
 	},
@@ -249,50 +245,17 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 			{
 				accessorKey: "todayPrice",
 				header: "Prezzo Oggi",
-				cell: (props) => {
-					const value = props.getValue();
-					const isValid = isValidNumber(value);
-					return (
-						<SuffixEditableTextCell
-							{...(props as CellContext<FinancialAsset, number>)}
-							suffix="€"
-							className={`min-w-[6em] max-w-[8em] ${!isValid ? 'border-red-500 bg-red-500/10' : ''}`}
-							onKeyDown={validateNumericInput}
-						/>
-					);
-				},
+				cell: createEditableNumericCell("€", "min-w-[6em] max-w-[8em]"),
 			},
 			{
 				accessorKey: "annualYieldGrossToday",
 				header: "Lordo",
-				cell: (props) => {
-					return (
-						<span className="flex font-bold italic">
-							<span className="mr-auto">
-								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
-							</span>
-							<span>%</span>
-						</span>
-					);
-				},
+				cell: (props) => renderYieldCell(props as CellContext<FinancialAssetRow, number>, { italic: true }),
 			},
 			{
 				accessorKey: "annualYieldNetToday",
 				header: "Netto",
-				cell: (props) => {
-					if (props.row.original.capitalGainTaxPerc == 0) {
-						return null; // Hide the value if tax is 0%
-					}
-
-					return (
-						<span className="flex font-bold italic">
-							<span className="mr-auto">
-								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
-							</span>
-							<span>%</span>
-						</span>
-					);
-				},
+				cell: (props) => renderYieldCell(props as CellContext<FinancialAssetRow, number>, { italic: true, hideWhenZeroTax: true }),
 			},
 		],
 	},
@@ -302,36 +265,18 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 			{
 				accessorKey: "totalValueSettlement",
 				header: "Acquisto",
-				cell: (props) => {
-					return (
-						<span className="flex font-bold">
-							<span className="mr-auto">
-								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
-							</span>
-							<span>€</span>
-						</span>
-					);
-				},
+				cell: (props) => renderEuroValueCell(props as CellContext<FinancialAssetRow, number>),
 			},
 			{
 				accessorKey: "totalValueToday",
 				header: "Oggi",
-				cell: (props) => {
-					return (
-						<span className="flex font-bold">
-							<span className="mr-auto">
-								{(props as CellContext<FinancialAsset, number>).getValue()?.toFixed(2)}
-							</span>
-							<span>€</span>
-						</span>
-					);
-				},
+				cell: (props) => renderEuroValueCell(props as CellContext<FinancialAssetRow, number>),
 			},
 			{
 				accessorKey: "totalValueDifference",
 				header: "Differenza",
 				cell: (props) => {
-					const value = (props as CellContext<FinancialAsset, number>).getValue();
+					const value = (props as CellContext<FinancialAssetRow, number>).getValue();
 					const isPositive = value > 0;
 					const isNegative = value < 0;
 					const textColorClass = isPositive ? "text-green-600" : isNegative ? "text-red-600" : "";
@@ -356,7 +301,7 @@ export const columns: ColumnDef<FinancialAsset>[] = [
 		header: "Note",
 		cell: (props) => (
 			<EditableTextCell
-				{...(props as CellContext<FinancialAsset, string>)}
+				{...(props as CellContext<FinancialAssetRow, string>)}
 				className="w-full h-auto min-w-[18ch] max-w-[21ch] resize-y overflow-hidden"
 				multiline={true}
 			/>

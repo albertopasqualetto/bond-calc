@@ -24,7 +24,7 @@ export const EditableTextCell = <T extends object>({
 	multiline,
 	className,
 	...props
-}: CellContext<T, string> &
+}: CellContext<T, string | number> &
 	ComponentPropsWithoutRef<typeof Input> & {
 		multiline?: boolean;
 		className?: string;
@@ -44,7 +44,7 @@ export const EditableTextCell = <T extends object>({
 
 	return multiline ? (
 		<Textarea
-			value={value}
+			value={String(value ?? "")}
 			onChange={(e) => setValue(e.target.value)}
 			onBlur={handleBlur}
 			rows={2}
@@ -54,7 +54,7 @@ export const EditableTextCell = <T extends object>({
 		/>
 	) : (
 		<Input
-			value={value}
+			value={value ?? ""}
 			onChange={(e) => setValue(e.target.value)}
 			onBlur={handleBlur}
 			className={className}
@@ -67,7 +67,7 @@ export const SuffixEditableTextCell = <T extends object>({
 	suffix,
 	className,
 	...props
-}: CellContext<T, string> &
+}: CellContext<T, string | number> &
 	ComponentPropsWithoutRef<typeof Input> & {
 		suffix: string;
 		className?: string;

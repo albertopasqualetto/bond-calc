@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FinancialAssetRow, columns } from "./columns";
+import { FinancialAssetRow, FinancialAssetRowCalculated, columns } from "./columns";
 import { DataTable } from "./template";
-import { createDate, isDateToday } from "@/utils/date";
+import { fromDateKey, isDateToday, toDateKey } from "@/utils/date";
 import { normalizeNumber } from "@/utils/number";
 import { fetchBorsaItalianaData } from "@/fetching/fetchBorsaItaliana";
 import { FinancialAsset } from "@/lib/financialAsset";
@@ -11,62 +11,206 @@ import { FinancialAsset } from "@/lib/financialAsset";
 // Local storage key for saving financial assets data
 const LOCAL_STORAGE_KEY = "financial-assets-data";
 
-function mockData(): FinancialAssetRow[] {
-	// Create financial asset instances
-	const asset1 = new FinancialAsset(
-		"IT0005445306",
-		createDate(2025, 3, 7),
-		createDate(2028, 7, 15),
-		0.5,
-		92.81,
-		100,
-		2,
-		"12.5"
-	);
+type PersistedFinancialAssetRow = Omit<FinancialAssetRow, keyof FinancialAssetRowCalculated>;
 
-	const asset2 = new FinancialAsset(
-		"IT0005441883",
-		createDate(2025, 3, 5),
-		createDate(2072, 3, 1),
-		2.15,
-		57.8,
-		100,
-		2,
-		"12.5"
-	);
-
-	// Get JSON data from assets and add additional UI-specific fields
-	return [
-		{
-			...JSON.parse(JSON.stringify(asset1.dict)),
-			name: "Btp Tf 0,5% Lg28 Eur",
-			capitalGainTaxPerc: (asset1.dict.capitalGainTaxPerc as string),
-			settlementDate: new Date(asset1.dict.settlementDate as string),
-			maturityDate: new Date(asset1.dict.maturityDate as string),
-			annualYieldGross: asset1.computeYield(),
-			annualYieldNet: asset1.computeYieldNet(),
-			todayPrice: 92.81,
-			annualYieldGrossToday: asset1.computeYield(new Date(), 92.81),
-			annualYieldNetToday: asset1.computeYieldNet(new Date(), 92.81),
-			totalValueNominal: 1000,
-			notes: "Test note 1",
-		},
-		{
-			...JSON.parse(JSON.stringify(asset2.dict)),
-			name: "Btp Tf 2,15% Mz72 Eur",
-			capitalGainTaxPerc: (asset2.dict.capitalGainTaxPerc as string),
-			settlementDate: new Date(asset2.dict.settlementDate as string),
-			maturityDate: new Date(asset2.dict.maturityDate as string),
-			annualYieldGross: asset2.computeYield(),
-			annualYieldNet: asset2.computeYieldNet(),
-			todayPrice: 57.8,
-			annualYieldGrossToday: asset2.computeYield(new Date(), 57.8),
-			annualYieldNetToday: asset2.computeYieldNet(new Date(), 57.8),
-			totalValueNominal: 2000,
-			notes: "Test note 2",
-		},
-	];
+interface HistoricalCalculationRow {
+	dateKey: string;
+	price: number;
+	annualYieldGrossToday: number;
+	annualYieldNetToday: number;
+	totalValueToday: number;
+	totalValueDifference: number;
 }
+
+const getLatestPriceEntry = (priceByDate?: Record<string, number>) => {
+	if (!priceByDate) return null;
+	const validEntries = Object.entries(priceByDate)
+		.filter(([, value]) => Number.isFinite(Number(value)))
+		.sort(([firstKey], [secondKey]) => firstKey.localeCompare(secondKey));
+	if (validEntries.length === 0) return null;
+	const [dateKey, price] = validEntries[validEntries.length - 1];
+	return {
+		dateKey,
+		price: Number(price),
+	};
+};
+
+const upsertPriceByDate = (existing: Record<string, number> | undefined, dateKey: string, price: number) => {
+	return {
+		...(existing || {}),
+		[dateKey]: Number(price),
+	};
+};
+
+const calculateTotalValues = (row: FinancialAssetRow) => {
+	if (!row.totalValueNominal || !row.redemptionPrice) {
+		return {
+			totalValueSettlement: NaN,
+			totalValueToday: NaN,
+			totalValueDifference: NaN,
+		};
+	}
+
+	const totalValueNominal = normalizeNumber(row.totalValueNominal);
+	const totalValueSettlement = (totalValueNominal / row.redemptionPrice) * row.settlementPrice;
+	const totalValueToday = row.todayPrice
+		? (totalValueNominal / row.redemptionPrice) * row.todayPrice
+		: NaN;
+
+	return {
+		totalValueSettlement,
+		totalValueToday,
+		totalValueDifference: totalValueToday - totalValueSettlement,
+	};
+};
+
+const recalculateDerivedFields = (row: FinancialAssetRow): FinancialAssetRow => {
+	const nextRow: FinancialAssetRow = {
+		...row,
+	};
+
+	const latestPrice = getLatestPriceEntry(nextRow.priceByDate);
+	nextRow.todayPrice = latestPrice?.price;
+
+	nextRow.annualYieldGross = NaN;
+	nextRow.annualYieldNet = NaN;
+	nextRow.annualYieldGrossToday = NaN;
+	nextRow.annualYieldNetToday = NaN;
+
+	try {
+		const settlementAsset = new FinancialAsset(
+			nextRow.isin,
+			nextRow.settlementDate,
+			nextRow.maturityDate,
+			nextRow.couponRatePerc,
+			nextRow.settlementPrice,
+			nextRow.redemptionPrice,
+			nextRow.yearlyFrequency,
+			nextRow.capitalGainTaxPerc,
+			nextRow.issuingDate,
+		);
+		nextRow.annualYieldGross = settlementAsset.computeYield();
+		nextRow.annualYieldNet = settlementAsset.computeYieldNet();
+
+		if (latestPrice) {
+			const referenceDate = fromDateKey(latestPrice.dateKey);
+			nextRow.annualYieldGrossToday = settlementAsset.computeYield(referenceDate, latestPrice.price);
+			nextRow.annualYieldNetToday = settlementAsset.computeYieldNet(referenceDate, latestPrice.price);
+		}
+	} catch (error) {
+		console.error("Error calculating yield:", error);
+	}
+
+	const values = calculateTotalValues(nextRow);
+	nextRow.totalValueSettlement = values.totalValueSettlement;
+	nextRow.totalValueToday = values.totalValueToday;
+	nextRow.totalValueDifference = values.totalValueDifference;
+
+	return nextRow;
+};
+
+const sanitizeRowForPersistence = (row: FinancialAssetRow): PersistedFinancialAssetRow => {
+	const {
+		annualYieldGross,
+		annualYieldNet,
+		todayPrice,
+		annualYieldGrossToday,
+		annualYieldNetToday,
+		totalValueSettlement,
+		totalValueToday,
+		totalValueDifference,
+		...baseRow
+	} = row;
+
+	void annualYieldGross;
+	void annualYieldNet;
+	void todayPrice;
+	void annualYieldGrossToday;
+	void annualYieldNetToday;
+	void totalValueSettlement;
+	void totalValueToday;
+	void totalValueDifference;
+
+	return baseRow;
+};
+
+const rehydrateRowFromPersistence = (row: PersistedFinancialAssetRow): FinancialAssetRow => {
+	let normalizedPriceByDate = Object.fromEntries(
+		Object.entries(row.priceByDate || {}).map(([dateKey, price]) => [dateKey, normalizeNumber(price)]),
+	);
+
+	// Backward compatibility for legacy exports that only had todayPrice.
+	// TODO remove in the future
+	if (Object.keys(normalizedPriceByDate).length === 0) {
+		const legacyTodayPrice = normalizeNumber(
+			(row as Record<string, unknown>).todayPrice as number | string,
+		);
+		if (Number.isFinite(legacyTodayPrice)) {
+			normalizedPriceByDate = {
+				[toDateKey(new Date())]: legacyTodayPrice,
+			};
+		}
+	}
+
+	return recalculateDerivedFields({
+		...row,
+		settlementDate: row.settlementDate ? new Date(row.settlementDate) : new Date(),
+		maturityDate: row.maturityDate ? new Date(row.maturityDate) : new Date(),
+		issuingDate: row.issuingDate ? new Date(row.issuingDate) : new Date(),
+		priceByDate: normalizedPriceByDate,
+	});
+};
+
+const buildHistoricalRows = (row: FinancialAssetRow): HistoricalCalculationRow[] => {
+	const entries = Object.entries(row.priceByDate || {})
+		.filter(([, price]) => Number.isFinite(Number(price)))
+		.sort(([first], [second]) => first.localeCompare(second));
+
+	if (entries.length === 0) {
+		return [];
+	}
+
+	let settlementAsset: FinancialAsset | null = null;
+	try {
+		settlementAsset = new FinancialAsset(
+			row.isin,
+			row.settlementDate,
+			row.maturityDate,
+			row.couponRatePerc,
+			row.settlementPrice,
+			row.redemptionPrice,
+			row.yearlyFrequency,
+			row.capitalGainTaxPerc,
+			row.issuingDate,
+		);
+	} catch {
+		return [];
+	}
+
+	const totalValueNominal = row.totalValueNominal && row.redemptionPrice
+		? normalizeNumber(row.totalValueNominal)
+		: NaN;
+	const totalValueSettlement = totalValueNominal
+		? (totalValueNominal / row.redemptionPrice) * row.settlementPrice
+		: NaN;
+
+	return entries.map(([dateKey, rawPrice]) => {
+		const price = Number(rawPrice);
+		const date = fromDateKey(dateKey);
+		const totalValueToday = totalValueNominal
+			? (totalValueNominal / row.redemptionPrice) * price
+			: NaN;
+
+		return {
+			dateKey,
+			price,
+			annualYieldGrossToday: settlementAsset!.computeYield(date, price),
+			annualYieldNetToday: settlementAsset!.computeYieldNet(date, price),
+			totalValueToday,
+			totalValueDifference: totalValueToday - totalValueSettlement,
+		};
+	});
+};
 
 interface YieldsTableProps {
 	name: string;
@@ -115,11 +259,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		const emptyAsset: FinancialAssetRow = {
 			 ...JSON.parse(JSON.stringify(emptyFinancialAsset.dict)), // Safer approach than using 'as any'
 			name: "",
-			annualYieldGross: NaN,
-			annualYieldNet: NaN,
-			todayPrice: NaN,
-			annualYieldGrossToday: NaN,
-			annualYieldNetToday: NaN,
+			priceByDate: {},
 			totalValueNominal: NaN,
 			totalValueSettlement: NaN,
 			totalValueToday: NaN,
@@ -128,7 +268,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		};
 
 		// Add the new empty row to the data
-		setData([...data, emptyAsset]);
+		setData([...data, recalculateDerivedFields(emptyAsset)]);
 	};
 
 	const handleDeleteAllRows = () => {
@@ -171,218 +311,176 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 
 	// This function handles data updates from the DataTable component
 	const handleDataChange = (newData: FinancialAssetRow[]) => {
-		setData(newData);
+		setData(newData.map((row) => recalculateDerivedFields(row)));
 	};
 
 	// This function will handle cell updates
 	const handleUpdateData = (
 		rowIndex: number,
 		columnId: string,
-		value: any,
+		value: unknown,
 	) => {
-			if (!value || rowIndex < 0 || rowIndex >= data.length) return;
-			
-			// Fast return if the value hasn't changed
-			const previousValue = data[rowIndex][columnId];
-			if (value == previousValue) {
-				console.log("Value unchanged, skipping update:", columnId, value);
-				return;
-			}
+		if (rowIndex < 0 || rowIndex >= data.length) {
+			return;
+		}
 
-			// Use functional update pattern to maintain proper immutability
-			setData(prevData => {
-				console.log("setData prevData", prevData, "rowIndex", rowIndex, "columnId", columnId, "value", value, "as type", typeof value, "previousValue", previousValue, "as type", typeof previousValue);
-				// Map through rows creating a new array
-				return prevData.map((row, idx) => {
-					// Only update the specific row that changed
-					if (idx === rowIndex) {
-						// Create new object with updated field
-						const updatedRow = {
-							...row,
-							[columnId]: value,
+		const previousRow = data[rowIndex];
+		const previousValue = previousRow[columnId as keyof FinancialAssetRow];
+		const isIsinColumn = columnId === "isin";
+		const isSameValue = value == previousValue;
+		if (!isIsinColumn && isSameValue) {
+			return;
+		}
+
+		setData((prevData) => {
+			return prevData.map((row, idx) => {
+				if (idx !== rowIndex) {
+					return row;
+				}
+
+				const updatedRow: FinancialAssetRow = {
+					...row,
+					[columnId]: value,
+				};
+
+				if (columnId === "todayPrice") {
+					const normalizedPrice = normalizeNumber(
+						typeof value === "string" || typeof value === "number" ? value : NaN,
+					);
+					updatedRow.priceByDate = upsertPriceByDate(
+						updatedRow.priceByDate,
+						toDateKey(new Date()),
+						normalizedPrice,
+					);
+				}
+
+				return recalculateDerivedFields(updatedRow);
+			});
+		});
+
+		if (!isIsinColumn) {
+			return;
+		}
+
+		const isin = String(value || "").trim();
+		if (isin.length !== 12) {
+			return;
+		}
+
+		const latestPriceDate = getLatestPriceEntry(previousRow.priceByDate)?.dateKey;
+		const todayDateKey = toDateKey(new Date());
+		const shouldRefetch = !isSameValue || latestPriceDate !== todayDateKey;
+		if (!shouldRefetch) {
+			return;
+		}
+
+		setData((currentData) => currentData.map((currentRow, currentIdx) => {
+			if (currentIdx !== rowIndex) {
+				return currentRow;
+			}
+			return {
+				...currentRow,
+				name: "Loading data...",
+			};
+		}));
+
+		fetchBorsaItalianaData(isin)
+			.then((bondData) => {
+				setData((currentData) => {
+					return currentData.map((currentRow, currentIdx) => {
+						if (currentIdx !== rowIndex) {
+							return currentRow;
+						}
+
+						const normalizedPrice = normalizeNumber(bondData.price.last || 0);
+						const nextRow: FinancialAssetRow = {
+							...currentRow,
+							name: bondData.title,
+							issuingDate: bondData.info.issuingDate,
+							maturityDate: bondData.info.maturityDate,
+							couponRatePerc: bondData.info.couponRatePerc,
+							yearlyFrequency: bondData.info.couponFrequency,
+							priceByDate: upsertPriceByDate(
+								currentRow.priceByDate,
+								todayDateKey,
+								normalizedPrice,
+							),
 						};
 
-						// Special handling for ISIN changes
-						if (columnId === "isin") {
-							// Update name immediately to show loading state
-							updatedRow.name = "Loading data...";
-
-							// Fetch data asynchronously
-							fetchBorsaItalianaData(value)
-								.then((bondData) => {
-									setData((currentData) => {
-										return currentData.map((currentRow, currentIdx) => {
-											if (currentIdx === rowIndex) {
-												if (bondData) {
-													return {
-														...currentRow,
-														name: bondData.title,
-														issuingDate: bondData.info.issuingDate,
-														maturityDate: bondData.info.maturityDate,
-														couponRatePerc: bondData.info.couponRatePerc,
-														yearlyFrequency:
-															bondData.info.couponFrequency ||
-															(() => {
-																throw new Error(
-																	`Yearly frequency not present for ISIN ${value}`,
-																);
-															})(),
-														todayPrice: bondData.price.last || 0,
-														settlementPrice: isDateToday(currentRow.settlementDate)
-															? bondData.price.last || 0
-															: currentRow.settlementPrice,
-													};
-												} else {
-													// Handle case when bondData is falsy
-													return {
-														...currentRow,
-														name: "No data available"
-													};
-												}
-											}
-											return currentRow;
-										});
-									});
-								})
-								.catch((error) => {
-									console.error(
-										`Error fetching data for ISIN ${value}:`,
-										error,
-									);
-									setData((currentData) => {
-										return currentData.map((currentRow, currentIdx) => {
-											if (currentIdx === rowIndex) {
-												return {
-													...currentRow,
-													name: "Data fetch failed"
-												};
-											}
-											return currentRow;
-										});
-									});
-								});
+						if (isDateToday(currentRow.settlementDate)) {
+							nextRow.settlementPrice = normalizedPrice;
 						}
 
-						// Check if any field relevant to yield calculation has changed
-						const calculateYieldRelevantFields = [
-							"isin",
-							"maturityDate",
-							"couponRatePerc",
-							"capitalGainTaxPerc",
-							"settlementDate",
-							"settlementPrice",
-							"redemptionPrice",
-							"yearlyFrequency",
-							"todayPrice"
-						];
-
-						if (calculateYieldRelevantFields.includes(columnId)) {
-							console.log("-------------------------------------------------\nCalculating yield for :", updatedRow.isin);
-							if (columnId !== "todayPrice") {
-								updatedRow.annualYieldGross = NaN;
-								updatedRow.annualYieldNet = NaN;
-							}
-							updatedRow.annualYieldGrossToday = NaN;
-							updatedRow.annualYieldNetToday = NaN;
-
-							try {
-								// Calculate settlement date yields
-								console.log("Calculating base yield")
-								if (columnId !== "todayPrice") {
-									const settlementAsset = new FinancialAsset(
-										updatedRow.isin,
-										updatedRow.settlementDate,
-										updatedRow.maturityDate,
-										updatedRow.couponRatePerc,
-										updatedRow.settlementPrice,
-										updatedRow.redemptionPrice,
-										updatedRow.yearlyFrequency,
-										updatedRow.capitalGainTaxPerc,
-										updatedRow.issuingDate
-									);
-									console.log("Coupon cashflows", settlementAsset.couponCashflows);
-
-									console.log("Cashflows gross", structuredClone(settlementAsset.toIrrCashflows()));
-									console.log("Cashflows net", structuredClone(settlementAsset.toIrrCashflowsNet()));
-									updatedRow.annualYieldGross = settlementAsset.computeYield();
-									updatedRow.annualYieldNet = settlementAsset.computeYieldNet();
-								}
-
-								// Calculate today's yields
-								if (updatedRow.todayPrice) {
-									console.log("Calculating yield if selling today")
-									const today = new Date();
-									today.setHours(0, 0, 0, 0);
-
-									const todayAsset = new FinancialAsset(
-										updatedRow.isin,
-										updatedRow.settlementDate,
-										updatedRow.maturityDate,
-										updatedRow.couponRatePerc,
-										updatedRow.settlementPrice,
-										updatedRow.redemptionPrice,
-										updatedRow.yearlyFrequency,
-										updatedRow.capitalGainTaxPerc,
-										updatedRow.issuingDate
-									);
-
-									console.log("Cashflows gross today", structuredClone(todayAsset.toIrrCashflows(today, updatedRow.todayPrice)));
-									console.log("Cashflows net today", structuredClone(todayAsset.toIrrCashflowsNet(today, updatedRow.todayPrice)));
-									updatedRow.annualYieldGrossToday = todayAsset.computeYield(today, updatedRow.todayPrice);
-									updatedRow.annualYieldNetToday = todayAsset.computeYieldNet(today, updatedRow.todayPrice);
-								} else {
-									console.warn("Today's price is missing for calculation");
-								}
-							} catch (error) {
-								console.error("Error calculating yield:", error);
-							}
+						return recalculateDerivedFields(nextRow);
+					});
+				});
+			})
+			.catch((error) => {
+				console.error(`Error fetching data for ISIN ${isin}:`, error);
+				setData((currentData) => {
+					return currentData.map((currentRow, currentIdx) => {
+						if (currentIdx !== rowIndex) {
+							return currentRow;
 						}
-
-						const calculateValueRelevantFields = [
-							"totalValueNominal",
-							"settlementPrice",
-							"todayPrice",
-							"annualYieldNet",
-							"annualYieldNetToday",
-						];
-
-						if (calculateValueRelevantFields.includes(columnId)) {
-							console.log("-------------------------------------------------\nCalculating value for :", updatedRow.isin);
-							if (updatedRow.totalValueNominal){
-								updatedRow.totalValueNominal = normalizeNumber(updatedRow.totalValueNominal);
-								updatedRow.totalValueSettlement = (updatedRow.totalValueNominal / updatedRow.redemptionPrice) * updatedRow.settlementPrice;
-								updatedRow.totalValueToday = updatedRow.todayPrice ? (updatedRow.totalValueNominal / updatedRow.redemptionPrice) * updatedRow.todayPrice : NaN;
-								updatedRow.totalValueDifference = updatedRow.totalValueToday - updatedRow.totalValueSettlement;
-							} else {
-								console.warn("Total value is missing for calculation");
-								updatedRow.totalValueSettlement = NaN;
-								updatedRow.totalValueToday = NaN;
-								updatedRow.totalValueDifference = NaN;
-							}
-						}
-
-						return updatedRow;
-					}
-
-					// Return unchanged rows as they were
-					return row;
+						return {
+							...currentRow,
+							name: "Data fetch failed",
+						};
+					});
 				});
 			});
-		};
+	};
+
+	const renderRowDetails = (row: FinancialAssetRow) => {
+		const historicalRows = buildHistoricalRows(row);
+		return (
+			<div className="space-y-3">
+				<div>
+					<div className="font-medium">ISIN</div>
+					<div className="text-sm">{row.isin || "N/A"}</div>
+				</div>
+				<div>
+					<div className="font-medium">Nome</div>
+					<div className="text-sm">{row.name || "N/A"}</div>
+				</div>
+				<div>
+					<div className="font-medium mb-2">Storico Prezzi</div>
+					{historicalRows.length === 0 ? (
+						<div className="text-sm">Nessun dato storico disponibile.</div>
+					) : (
+						<div className="space-y-2">
+							{historicalRows.map((entry) => (
+								<div key={entry.dateKey} className="rounded border p-2 text-sm">
+									<div>Data: {entry.dateKey}</div>
+									<div>Prezzo: {entry.price.toFixed(3)} €</div>
+									<div>Rend. Lordo: {entry.annualYieldGrossToday.toFixed(2)}%</div>
+									<div>Rend. Netto: {entry.annualYieldNetToday.toFixed(2)}%</div>
+									<div>Controvalore: {entry.totalValueToday.toFixed(2)} €</div>
+									<div>Differenza: {entry.totalValueDifference.toFixed(2)} €</div>
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+			</div>
+		);
+	};
 
 	return (
 		<div className="px-4 mx-auto py-5">
 			<DataTable
-				columns={columns}
-				data={data}
+				columns={columns as unknown as Parameters<typeof DataTable>[0]["columns"]}
+				data={data as unknown as Parameters<typeof DataTable>[0]["data"]}
 				name={ownerName}
 				onAddRow={handleAddRow}
 				onDeleteAllRows={handleDeleteAllRows}
-				onDeleteRow={handleDeleteRow}
+				onDeleteRow={(row: unknown) => handleDeleteRow(row as FinancialAssetRow)}
 				onNameChange={handleNameChange} // Use our wrapper function
-				onDataChange={handleDataChange}
+				onDataChange={(rows: unknown[]) => handleDataChange(rows as FinancialAssetRow[])}
 				localStorageKey={LOCAL_STORAGE_KEY}
-				// defaultData={mockData()}
+				serializeRow={(row: unknown) => sanitizeRowForPersistence(row as FinancialAssetRow)}
+				deserializeRow={(row) => rehydrateRowFromPersistence(row as PersistedFinancialAssetRow)}
+				renderRowDetails={(row: unknown) => renderRowDetails(row as FinancialAssetRow)}
 				meta={{
 					updateData: handleUpdateData,
 					deleteConfirmState: deleteConfirmState.isConfirming,

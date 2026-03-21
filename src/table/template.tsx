@@ -8,7 +8,7 @@ import {
 	VisibilityState,
 	Row,
 } from "@tanstack/react-table";
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo, ReactNode } from "react";
 
 import {
 	Table,
@@ -43,25 +43,107 @@ interface DataTableProps<TData, TValue> {
 	onDataChange?: (data: TData[]) => void; // New callback for data changes from storage
 	localStorageKey?: string;
 	meta?: {
-		updateData: (rowIndex: number, columnId: string, value: any) => void;
+		updateData: (rowIndex: number, columnId: string, value: unknown) => void;
 		deleteConfirmState?: boolean;
 	};
 	defaultData?: TData[]; // Default data to use if nothing in storage
+	serializeRow?: (row: TData) => unknown;
+	deserializeRow?: (row: unknown) => TData;
+	renderRowDetails?: (row: TData) => ReactNode;
 }
 
+const getColumnId = <TData, TValue>(column: ColumnDef<TData, TValue>): string | undefined => {
+	if (column.id) {
+		return String(column.id);
+	}
+	if ("accessorKey" in column && typeof column.accessorKey === "string") {
+		return column.accessorKey;
+	}
+	return undefined;
+};
+
+const isPrintableColumn = <TData, TValue>(column: ColumnDef<TData, TValue>): boolean => {
+	const meta = column.meta as { printable?: boolean } | undefined;
+	return meta?.printable !== false;
+};
+
+const collectAllColumnIds = <TData, TValue>(columns: ColumnDef<TData, TValue>[]): string[] => {
+	const ids: string[] = [];
+
+	for (const column of columns) {
+		const id = getColumnId(column);
+		if (id) {
+			ids.push(id);
+		}
+
+		if ("columns" in column && Array.isArray(column.columns)) {
+			for (const nestedColumn of column.columns) {
+				const nestedId = getColumnId(nestedColumn);
+				if (nestedId) {
+					ids.push(nestedId);
+				}
+			}
+		}
+	}
+
+	return ids;
+};
+
+const collectHiddenPrintColumnIds = <TData, TValue>(columns: ColumnDef<TData, TValue>[]): string[] => {
+	const ids: string[] = [];
+
+	for (const column of columns) {
+		const id = getColumnId(column);
+		if (id && !isPrintableColumn(column)) {
+			ids.push(id);
+		}
+
+		if ("columns" in column && Array.isArray(column.columns)) {
+			for (const nestedColumn of column.columns) {
+				const nestedId = getColumnId(nestedColumn);
+				if (nestedId && !isPrintableColumn(nestedColumn)) {
+					ids.push(nestedId);
+				}
+			}
+		}
+	}
+
+	return ids;
+};
+
+const buildColumnVisibility = <TData, TValue>(
+	columns: ColumnDef<TData, TValue>[],
+	isPrintMode: boolean,
+): VisibilityState => {
+	const visibility: VisibilityState = {};
+
+	if (isPrintMode) {
+		for (const id of collectHiddenPrintColumnIds(columns)) {
+			visibility[id] = false;
+		}
+		return visibility;
+	}
+
+	for (const id of collectAllColumnIds(columns)) {
+		visibility[id] = true;
+	}
+
+	return visibility;
+};
+
 // Create a memoized row component
-const MemoizedRow = memo(function TableRowMemoized<TData, TValue>({
+const MemoizedRow = memo(function TableRowMemoized<TData>({
 	row,
 	onClick,
 }: {
 	row: Row<TData>;
-	onClick: (e: React.MouseEvent, data: TData) => void;
+	onClick: (e: React.MouseEvent, data: unknown) => void;
 }) {
 	return (
 		<TableRow
 			key={row.id}
 			data-state={row.getIsSelected() && "selected"}
-			onClick={(e) => onClick(e, row.original as TData)}
+			onClick={(e) => onClick(e, row.original)}
 			className="cursor-pointer hover:bg-muted/50"
 		>
 			{row.getVisibleCells().map((cell) => (
@@ -86,67 +168,66 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 	localStorageKey = "financial-assets-data",
 	meta,
 	defaultData = [],
+	serializeRow,
+	deserializeRow,
+	renderRowDetails,
 }: DataTableProps<TData, TValue>) {
 	const [selectedRow, setSelectedRow] = useState<TData | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [isPrinting, setIsPrinting] = useState(false);
-	const [parent, _] = useAutoAnimate(/* optional config */);
+	const [parent] = useAutoAnimate(/* optional config */);
+
+	const deserializeItem = useCallback((item: unknown): TData => {
+		if (deserializeRow) {
+			return deserializeRow(item);
+		}
+		const record = item as Record<string, unknown>;
+		return {
+			...record,
+			settlementDate: record.settlementDate ? new Date(String(record.settlementDate)) : null,
+			maturityDate: record.maturityDate ? new Date(String(record.maturityDate)) : null,
+		} as TData;
+	}, [deserializeRow]);
+
+	const extractRowsFromPayload = useCallback((payload: unknown): TData[] => {
+		if (Array.isArray(payload)) {
+			return payload.map(deserializeItem);
+		}
+
+		const record = payload as Record<string, unknown>;
+		if (Array.isArray(record.tableData)) {
+			return record.tableData.map(deserializeItem);
+		}
+
+		return [];
+	}, [deserializeItem]);
+
+	const applyImportedPayload = useCallback((payload: unknown) => {
+		const record = payload as Record<string, unknown>;
+		if (typeof record.ownerName === "string" && record.ownerName && onNameChange && record.ownerName !== name) {
+			onNameChange(record.ownerName);
+		}
+
+		if (!onDataChange) {
+			return;
+		}
+
+		const rows = extractRowsFromPayload(payload);
+		if (rows.length > 0) {
+			onDataChange(rows);
+		}
+	}, [extractRowsFromPayload, name, onDataChange, onNameChange]);
 
 	// Set up print media query listener
 	useEffect(() => {
-		// Function to check if we're in print mode
 		const checkPrintMode = () => {
 			const isPrintMode = window.matchMedia('print').matches ||
 				window.matchMedia('(max-width: 0px)').matches;
 
 			setIsPrinting(isPrintMode);
-
-			// If printing, update column visibility based on meta.printable property
-			if (isPrintMode) {
-				const newVisibility: VisibilityState = {};
-				// Check each column for meta.printable property
-				columns.forEach(col => {
-					// If column has meta.printable === false, hide it
-					// Use column id or accessorKey as the key
-					const columnId = String(col.id || col.accessorKey);
-					if (columnId && col.meta && col.meta.printable === false) {
-						newVisibility[columnId] = false;
-					}
-
-					// Check nested columns if they exist
-					if ('columns' in col && Array.isArray(col.columns)) {
-						col.columns.forEach(nestedCol => {
-							const nestedColumnId = String(nestedCol.id || nestedCol.accessorKey);
-							if (nestedColumnId && nestedCol.meta && nestedCol.meta.printable === false) {
-								newVisibility[nestedColumnId] = false;
-							}
-						});
-					}
-				});
-				setColumnVisibility(prev => ({...prev, ...newVisibility}));
-			} else {
-				// When not printing, show all columns
-				const newVisibility: VisibilityState = {};
-					columns.forEach(col => {
-					const columnId = String(col.id || col.accessorKey);
-					if (columnId) {
-						newVisibility[columnId] = true;
-					}
-
-					// Reset nested columns if they exist
-					if ('columns' in col && Array.isArray(col.columns)) {
-						col.columns.forEach(nestedCol => {
-							const nestedColumnId = String(nestedCol.id || nestedCol.accessorKey);
-							if (nestedColumnId) {
-								newVisibility[nestedColumnId] = true;
-							}
-						});
-					}
-				});
-				setColumnVisibility(prev => ({...prev, ...newVisibility}));
-			}
+			setColumnVisibility((prev) => ({ ...prev, ...buildColumnVisibility(columns, isPrintMode) }));
 		};
 
 		// Initial check
@@ -165,8 +246,10 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 		}
 
 		// Also add a listener for beforeprint and afterprint events
-		window.addEventListener('beforeprint', () => setIsPrinting(true));
-		window.addEventListener('afterprint', () => setIsPrinting(false));
+		const handleBeforePrint = () => setIsPrinting(true);
+		const handleAfterPrint = () => setIsPrinting(false);
+		window.addEventListener('beforeprint', handleBeforePrint);
+		window.addEventListener('afterprint', handleAfterPrint);
 
 		return () => {
 			// Clean up
@@ -175,52 +258,14 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			} else if (mediaQueryList.removeListener) {
 				mediaQueryList.removeListener(handlePrintChange);
 			}
-			window.removeEventListener('beforeprint', () => setIsPrinting(true));
-			window.removeEventListener('afterprint', () => setIsPrinting(false));
+			window.removeEventListener('beforeprint', handleBeforePrint);
+			window.removeEventListener('afterprint', handleAfterPrint);
 		};
 	}, [columns]);  // Added columns as a dependency
 
 	// Update the other useEffect to use the same column checking logic
 	useEffect(() => {
-		if (isPrinting) {
-			const newVisibility: VisibilityState = {};
-			columns.forEach(col => {
-				const columnId = String(col.id || col.accessorKey);
-				if (columnId && col.meta && col.meta.printable === false) {
-					newVisibility[columnId] = false;
-				}
-
-				// Check nested columns if they exist
-				if ('columns' in col && Array.isArray(col.columns)) {
-					col.columns.forEach(nestedCol => {
-						const nestedColumnId = String(nestedCol.id || nestedCol.accessorKey);
-						if (nestedColumnId && nestedCol.meta && nestedCol.meta.printable === false) {
-							newVisibility[nestedColumnId] = false;
-						}
-					});
-				}
-			});
-			setColumnVisibility(prev => ({...prev, ...newVisibility}));
-		} else {
-			const newVisibility: VisibilityState = {};
-			columns.forEach(col => {
-				const columnId = String(col.id || col.accessorKey);
-				if (columnId) {
-					newVisibility[columnId] = true;
-				}
-
-				// Reset nested columns if they exist
-				if ('columns' in col && Array.isArray(col.columns)) {
-					col.columns.forEach(nestedCol => {
-						const nestedColumnId = String(nestedCol.id || nestedCol.accessorKey);
-						if (nestedColumnId) {
-							newVisibility[nestedColumnId] = true;
-						}
-					});
-				}
-			});
-			setColumnVisibility(prev => ({...prev, ...newVisibility}));
-		}
+		setColumnVisibility((prev) => ({ ...prev, ...buildColumnVisibility(columns, isPrinting) }));
 	}, [isPrinting, columns]);  // Added columns as a dependency
 
 	// Load data from local storage on component mount
@@ -230,33 +275,10 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			if (savedData) {
 				try {
 					const parsedData = JSON.parse(savedData);
-					if (parsedData.ownerName === "" && parsedData.tableData.length === 0) {
+					if (parsedData.ownerName === "" && Array.isArray(parsedData.tableData) && parsedData.tableData.length === 0) {
 						throw new Error("Empty data");
 					}
-
-					// Extract owner name if present
-					if (parsedData.ownerName && onNameChange && parsedData.ownerName !== name) {
-						onNameChange(parsedData.ownerName);
-					}
-
-					// Extract table data if present
-					if (parsedData.tableData && onDataChange) {
-						// Parse dates back to Date objects
-						const processedData = parsedData.tableData.map((item: any) => ({
-							...item,
-							settlementDate: item.settlementDate ? new Date(item.settlementDate) : null,
-							maturityDate: item.maturityDate ? new Date(item.maturityDate) : null,
-						}));
-						onDataChange(processedData);
-					} else if (!parsedData.tableData && Array.isArray(parsedData) && onDataChange) {
-						// Handle legacy format where data was stored directly without ownerName
-						const processedData = parsedData.map((item: any) => ({
-							...item,
-							settlementDate: item.settlementDate ? new Date(item.settlementDate) : null,
-							maturityDate: item.maturityDate ? new Date(item.maturityDate) : null,
-						}));
-						onDataChange(processedData);
-					}
+					applyImportedPayload(parsedData);
 				} catch (error) {
 					console.error("Failed to parse stored data:", error);
 					// If there's an error parsing, use default data
@@ -269,23 +291,25 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 				onDataChange(defaultData);
 			}
 		}
-	}, [localStorageKey]); // Only run on mount
+	}, [applyImportedPayload, localStorageKey, defaultData, onDataChange]);
 
 	// Save data to local storage whenever it changes
 	useEffect(() => {
 		if (localStorageKey && typeof window !== 'undefined') {
+			const tableDataToStore = serializeRow ? data.map((item) => serializeRow(item)) : data;
 			const dataToStore = {
-				tableData: data,
+				tableData: tableDataToStore,
 				ownerName: name
 			};
 			localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
 		}
-	}, [data, name, localStorageKey]);
+	}, [data, name, localStorageKey, serializeRow]);
 
 	const handleExportData = async () => {
+		const tableDataToExport = serializeRow ? data.map((item) => serializeRow(item)) : data;
 		// Prepare the data to export
 		const dataToExport = {
-			tableData: data,
+			tableData: tableDataToExport,
 			ownerName: name
 		};
 
@@ -296,7 +320,18 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 		if ('showSaveFilePicker' in window) {
 			try {
 				// Use File System Access API
-				const fileHandle = await window.showSaveFilePicker({
+				const pickerWindow = window as Window & {
+					showSaveFilePicker?: (options: unknown) => Promise<{
+						createWritable: () => Promise<{
+							write: (content: string) => Promise<void>;
+							close: () => Promise<void>;
+						}>;
+					}>;
+				};
+				if (!pickerWindow.showSaveFilePicker) {
+					throw new Error("showSaveFilePicker is not available");
+				}
+				const fileHandle = await pickerWindow.showSaveFilePicker({
 					suggestedName: fileName,
 					types: [{
 						description: 'JSON File',
@@ -357,29 +392,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 				const result = e.target?.result as string;
 				const parsedData = JSON.parse(result);
 
-				// Extract owner name if present
-				if (parsedData.ownerName && onNameChange) {
-					onNameChange(parsedData.ownerName);
-				}
-
-				// Extract and process table data
-				if (parsedData.tableData && onDataChange) {
-					// Parse dates back to Date objects
-					const processedData = parsedData.tableData.map((item: any) => ({
-						...item,
-						settlementDate: item.settlementDate ? new Date(item.settlementDate) : null,
-						maturityDate: item.maturityDate ? new Date(item.maturityDate) : null,
-					}));
-					onDataChange(processedData);
-				} else if (Array.isArray(parsedData) && onDataChange) {
-					// Handle case where data might be just an array
-					const processedData = parsedData.map((item: any) => ({
-						...item,
-						settlementDate: item.settlementDate ? new Date(item.settlementDate) : null,
-						maturityDate: item.maturityDate ? new Date(item.maturityDate) : null,
-					}));
-					onDataChange(processedData);
-				}
+				applyImportedPayload(parsedData);
 			} catch (error) {
 				console.error("Failed to parse imported data:", error);
 				alert("Failed to import data. Please ensure the file is a valid JSON export.");
@@ -394,7 +407,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 	};
 
 	// Modified to check the click target before opening dialog
-	const handleRowClick = (event: React.MouseEvent, row: TData) => {
+	const handleRowClick = (event: React.MouseEvent, row: unknown) => {
 		// Check if the click target is an interactive element
 		const target = event.target as HTMLElement;
 
@@ -412,7 +425,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			target.closest('[contenteditable="true"]') !== null;
 
 		if (!isInteractive) {
-			setSelectedRow(row);
+			setSelectedRow(row as TData);
 			setIsDialogOpen(true);
 		}
 	};
@@ -508,7 +521,8 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 						ref={fileInputRef}
 						onChange={handleFileUpload}
 						accept=".json"
-						style={{ display: 'none' }}
+						title="Import JSON"
+						className="hidden"
 					/>
 					</Button>
 				</div>
@@ -548,15 +562,16 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 					</DialogHeader>
 					{selectedRow && (
 						<div className="py-4">
-							{columns.map((column, i) => {
-								const id = column.accessorKey || column.id;
+							{renderRowDetails ? renderRowDetails(selectedRow) : columns.map((column, i) => {
+								const id = getColumnId(column);
 								if (!id) return null;
+								const selectedRowRecord = selectedRow as Record<string, unknown>;
 
 								return (
 									<div key={i} className="mb-2">
 										<div className="font-medium">{String(column.header)}</div>
 										<div className="text-sm">
-											{String(selectedRow[id] !== undefined ? selectedRow[id] : 'N/A')}
+											{String(selectedRowRecord[id] !== undefined ? selectedRowRecord[id] : 'N/A')}
 										</div>
 									</div>
 								);
