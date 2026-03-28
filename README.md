@@ -32,7 +32,7 @@ export default tseslint.config({
 
 # TODOs
 
-- [ ] Fix: If 2 of the same ISBN, when deleting one, the other is being deleted too
+- [x] Fix: If 2 of the same ISIN, when deleting one, the other is being deleted too
 - [ ] Fix types
 - [ ] internationalization
 - [ ] Better locale management

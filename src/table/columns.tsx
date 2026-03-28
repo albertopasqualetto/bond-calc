@@ -42,6 +42,7 @@ export type FinancialAssetRowCalculated = {
 	totalValueSettlement?: number;
 	totalValueToday?: number;
 	totalValueDifference?: number;
+	_rowId?: string; // Unique identifier for this row instance
 };
 
 export type FinancialAssetRow = FinancialAssetBaseRow & FinancialAssetRowCalculated;

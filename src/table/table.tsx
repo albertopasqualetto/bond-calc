@@ -11,6 +11,15 @@ import { FinancialAsset } from "@/lib/financialAsset";
 // Local storage key for saving financial assets data
 const LOCAL_STORAGE_KEY = "financial-assets-data";
 
+// Helper function to generate unique row IDs (short ID that can be combined with ISIN)
+const generateShortId = (): string => {
+	return Math.random().toString(36).substring(2, 8);
+};
+
+const formatRowId = (isin: string, shortId: string): string => {
+	return isin ? `${isin}-${shortId}` : shortId;
+};
+
 type PersistedFinancialAssetRow = Omit<FinancialAssetRow, keyof FinancialAssetRowCalculated>;
 
 interface HistoricalCalculationRow {
@@ -152,12 +161,14 @@ const rehydrateRowFromPersistence = (row: PersistedFinancialAssetRow): Financial
 		}
 	}
 
+	const shortId = generateShortId();
 	return recalculateDerivedFields({
 		...row,
 		settlementDate: row.settlementDate ? new Date(row.settlementDate) : new Date(),
 		maturityDate: row.maturityDate ? new Date(row.maturityDate) : new Date(),
 		issuingDate: row.issuingDate ? new Date(row.issuingDate) : new Date(),
 		priceByDate: normalizedPriceByDate,
+		_rowId: formatRowId(row.isin, shortId), // Generate a new unique ID for each loaded row
 	});
 };
 
@@ -256,6 +267,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		);
 
 		// Create a row using the financial asset's JSON data with additional UI fields
+		const shortId = generateShortId();
 		const emptyAsset: FinancialAssetRow = {
 			 ...JSON.parse(JSON.stringify(emptyFinancialAsset.dict)), // Safer approach than using 'as any'
 			name: "",
@@ -264,7 +276,8 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 			totalValueSettlement: NaN,
 			totalValueToday: NaN,
 			totalValueDifference: NaN,
-			notes: ""
+			notes: "",
+			_rowId: formatRowId("", shortId), // Generate unique ID for this row
 		};
 
 		// Add the new empty row to the data
@@ -299,14 +312,9 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 	}, [deleteConfirmState]);
 
 	const handleDeleteRow = useCallback((row: FinancialAssetRow) => {
-		// Use ISIN as a unique identifier to filter out the row to delete
-		// If ISIN is empty (for a new row), compare by object reference
-		if (row.isin) {
-			setData((previousData) => previousData.filter((item) => item.isin !== row.isin));
-		} else {
-			// For newly added rows without an ISIN, use object reference comparison
-			setData((previousData) => previousData.filter((item) => item !== row));
-		}
+		// Use the unique row ID to identify and delete the correct row
+		// This prevents deleting multiple rows with the same ISIN
+		setData((previousData) => previousData.filter((item) => item._rowId !== row._rowId));
 	}, []);
 
 	// This function handles data updates from the DataTable component

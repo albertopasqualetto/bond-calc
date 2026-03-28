@@ -57,7 +57,7 @@ function convertCouponFrequency(frequency: string): number {
 	return 0;
 }
 
-// 	TODO put here the parsing logic which is in the following function
+// TODO put here the parsing logic which is in the following function
 // TODO add another interface for actual data types?
 // function parseBorsaItalianaData(
 // 	data: BorsaItalianaData,
