@@ -1,4 +1,4 @@
-import { FinancialAsset, Cashflow } from '../lib/financialAsset';
+import { FinancialAsset } from '../lib/financialAsset';
 import { createDate } from '../utils/date';
 
 

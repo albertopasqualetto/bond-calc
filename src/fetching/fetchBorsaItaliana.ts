@@ -52,14 +52,17 @@ function convertCouponFrequency(frequency: string): number {
 			return frequencyMap[key];
 		}
 	}
+
+	// Default to 0 if not found
+	return 0;
 }
 
-function parseBorsaItalianaData(
-	data: BorsaItalianaData,
-): BorsaItalianaData {
 // 	TODO put here the parsing logic which is in the following function
-}
 // TODO add another interface for actual data types?
+// function parseBorsaItalianaData(
+// 	data: BorsaItalianaData,
+// ): BorsaItalianaData {
+// }
 
 /**
  * Fetches data from Borsa Italiana for a given ISIN
@@ -88,7 +91,8 @@ export async function fetchBorsaItalianaData(
 			);
 		}
 
-		const result: BorsaItalianaResponse = await response.json();
+		const rawResult: unknown = await response.json();
+		const result = rawResult as BorsaItalianaResponse;
 		if (!result.success) {
 			throw new Error(
 				`API request not successful: ${result.success}`,
@@ -115,20 +119,3 @@ export async function fetchBorsaItalianaData(
 		throw error;
 	}
 }
-
-// Example usage
-async function getBondData() {
-	try {
-		const isin = "IT0005582421";
-		const data = await fetchBorsaItalianaData(isin);
-
-		console.log(data);
-
-
-	} catch (error) {
-		console.error("Failed to get bond data:", error);
-	}
-}
-
-// Call the function
-getBondData();

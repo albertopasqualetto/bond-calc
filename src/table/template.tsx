@@ -32,6 +32,8 @@ import { Trash2, Plus, Download, Upload } from "lucide-react";
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { cn } from "@/lib/utils"
 
+const STORAGE_SCHEMA_VERSION = 2;
+
 interface DataTableProps<TData, TValue> {
 	columns: ColumnDef<TData, TValue>[];
 	data: TData[];
@@ -131,6 +133,30 @@ const buildColumnVisibility = <TData, TValue>(
 	return visibility;
 };
 
+const toValidDateOrNull = (value: unknown): Date | null => {
+	if (value instanceof Date) {
+		return Number.isNaN(value.getTime()) ? null : value;
+	}
+	if (typeof value === "string" || typeof value === "number") {
+		const parsed = new Date(value);
+		return Number.isNaN(parsed.getTime()) ? null : parsed;
+	}
+	return null;
+};
+
+const toDisplayString = (value: unknown): string => {
+	if (value === undefined || value === null) {
+		return "N/A";
+	}
+	if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+		return String(value);
+	}
+	if (value instanceof Date) {
+		return Number.isNaN(value.getTime()) ? "N/A" : value.toISOString();
+	}
+	return JSON.stringify(value);
+};
+
 // Create a memoized row component
 const MemoizedRow = memo(function TableRowMemoized<TData>({
 	row,
@@ -175,6 +201,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 	const [selectedRow, setSelectedRow] = useState<TData | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const hasLoadedInitialDataRef = useRef(false);
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [isPrinting, setIsPrinting] = useState(false);
 	const [parent] = useAutoAnimate(/* optional config */);
@@ -186,8 +213,8 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 		const record = item as Record<string, unknown>;
 		return {
 			...record,
-			settlementDate: record.settlementDate ? new Date(String(record.settlementDate)) : null,
-			maturityDate: record.maturityDate ? new Date(String(record.maturityDate)) : null,
+			settlementDate: toValidDateOrNull(record.settlementDate),
+			maturityDate: toValidDateOrNull(record.maturityDate),
 		} as TData;
 	}, [deserializeRow]);
 
@@ -215,10 +242,47 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 		}
 
 		const rows = extractRowsFromPayload(payload);
-		if (rows.length > 0) {
-			onDataChange(rows);
-		}
+		onDataChange(rows);
 	}, [extractRowsFromPayload, name, onDataChange, onNameChange]);
+
+	const shouldMigratePayload = useCallback((payload: unknown): boolean => {
+		if (Array.isArray(payload)) {
+			return true;
+		}
+
+		const record = payload as Record<string, unknown>;
+		if (record.schemaVersion !== STORAGE_SCHEMA_VERSION) {
+			return true;
+		}
+
+		if (!Array.isArray(record.tableData)) {
+			return false;
+		}
+
+		return record.tableData.some((item) => {
+			const row = item as Record<string, unknown>;
+			return "todayPrice" in row && !("priceByDate" in row);
+		});
+	}, []);
+
+	const rewriteStoragePayload = useCallback((payload: unknown) => {
+		if (!localStorageKey || typeof window === "undefined") {
+			return;
+		}
+
+		const record = payload as Record<string, unknown>;
+		const ownerNameFromPayload = typeof record.ownerName === "string" ? record.ownerName : name;
+		const rows = extractRowsFromPayload(payload);
+		const tableDataToStore = serializeRow ? rows.map((row) => serializeRow(row)) : rows;
+		localStorage.setItem(
+			localStorageKey,
+			JSON.stringify({
+				schemaVersion: STORAGE_SCHEMA_VERSION,
+				tableData: tableDataToStore,
+				ownerName: ownerNameFromPayload || "",
+			}),
+		);
+	}, [extractRowsFromPayload, localStorageKey, name, serializeRow]);
 
 	// Set up print media query listener
 	useEffect(() => {
@@ -270,15 +334,33 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 
 	// Load data from local storage on component mount
 	useEffect(() => {
+		if (hasLoadedInitialDataRef.current) {
+			return;
+		}
+
+		hasLoadedInitialDataRef.current = true;
+
 		if (localStorageKey && typeof window !== 'undefined') {
 			const savedData = localStorage.getItem(localStorageKey);
 			if (savedData) {
 				try {
-					const parsedData = JSON.parse(savedData);
-					if (parsedData.ownerName === "" && Array.isArray(parsedData.tableData) && parsedData.tableData.length === 0) {
-						throw new Error("Empty data");
+					const parsedData: unknown = JSON.parse(savedData);
+					const parsedDataRecord = parsedData as Record<string, unknown>;
+					const isEmptyPayload =
+						parsedDataRecord.ownerName === "" &&
+						Array.isArray(parsedDataRecord.tableData) &&
+						parsedDataRecord.tableData.length === 0;
+
+					if (isEmptyPayload) {
+						if (onDataChange && defaultData.length > 0) {
+							onDataChange(defaultData);
+						}
+						return;
 					}
 					applyImportedPayload(parsedData);
+					if (shouldMigratePayload(parsedData)) {
+						rewriteStoragePayload(parsedData);
+					}
 				} catch (error) {
 					console.error("Failed to parse stored data:", error);
 					// If there's an error parsing, use default data
@@ -291,13 +373,14 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 				onDataChange(defaultData);
 			}
 		}
-	}, [applyImportedPayload, localStorageKey, defaultData, onDataChange]);
+	}, [applyImportedPayload, defaultData, localStorageKey, onDataChange, rewriteStoragePayload, shouldMigratePayload]);
 
 	// Save data to local storage whenever it changes
 	useEffect(() => {
 		if (localStorageKey && typeof window !== 'undefined') {
 			const tableDataToStore = serializeRow ? data.map((item) => serializeRow(item)) : data;
 			const dataToStore = {
+				schemaVersion: STORAGE_SCHEMA_VERSION,
 				tableData: tableDataToStore,
 				ownerName: name
 			};
@@ -390,7 +473,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 		reader.onload = (e) => {
 			try {
 				const result = e.target?.result as string;
-				const parsedData = JSON.parse(result);
+				const parsedData: unknown = JSON.parse(result);
 
 				applyImportedPayload(parsedData);
 			} catch (error) {
@@ -446,6 +529,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 		data,
 		columns,
 		getCoreRowModel: getCoreRowModel(),
+		autoResetPageIndex: false,
 		state: {
 			columnVisibility,
 		},
@@ -502,7 +586,9 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			<div className="flex justify-between w-full print:hidden">
 				<div className="flex gap-3 p-4">
 					<Button
-						onClick={handleExportData}
+						onClick={() => {
+							void handleExportData();
+						}}
 						variant="outline"
 						className="cursor-pointer transition-colors"
 						disabled={!table.getRowModel().rows.length}
@@ -571,7 +657,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 									<div key={i} className="mb-2">
 										<div className="font-medium">{String(column.header)}</div>
 										<div className="text-sm">
-											{String(selectedRowRecord[id] !== undefined ? selectedRowRecord[id] : 'N/A')}
+											{toDisplayString(selectedRowRecord[id])}
 										</div>
 									</div>
 								);
@@ -585,10 +671,8 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 								<Trash2 className="mr-2 h-4 w-4" /> Remove Row
 							</Button>
 						)}
-						<DialogClose asChild>
-							<Button variant="outline" className="cursor-pointer">
-								Close
-							</Button>
+						<DialogClose render={<Button variant="outline" className="cursor-pointer" />}>
+							Close
 						</DialogClose>
 					</DialogFooter>
 				</DialogContent>

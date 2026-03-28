@@ -14,7 +14,7 @@ export default defineConfig({
   // define: {
   //   'process.env': process.env  // TODO: check if this works after build
   // },
-  base: "/",
+  base: "/bond-calc/",
   preview: {
     port: 8080,
     strictPort: true,

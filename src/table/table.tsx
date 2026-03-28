@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FinancialAssetRow, FinancialAssetRowCalculated, columns } from "./columns";
 import { DataTable } from "./template";
 import { fromDateKey, isDateToday, toDateKey } from "@/utils/date";
@@ -231,15 +231,15 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 	}, [name]);
 
 	// Handle name changes from within this component or from imported data
-	const handleNameChange = (newName: string) => {
+	const handleNameChange = useCallback((newName: string) => {
 		setOwnerName(newName);
 		// Propagate the name change to the parent component if callback exists
 		if (onNameChange) {
 			onNameChange(newName);
 		}
-	};
+	}, [onNameChange]);
 
-	const handleAddRow = () => {
+	const handleAddRow = useCallback(() => {
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 
@@ -268,10 +268,10 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		};
 
 		// Add the new empty row to the data
-		setData([...data, recalculateDerivedFields(emptyAsset)]);
-	};
+		setData((previousData) => [...previousData, recalculateDerivedFields(emptyAsset)]);
+	}, []);
 
-	const handleDeleteAllRows = () => {
+	const handleDeleteAllRows = useCallback(() => {
 		if (!deleteConfirmState.isConfirming) {
 			// First press - set confirming state and timeout
 			const timeoutId = setTimeout(() => {
@@ -296,23 +296,39 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 				timeoutId: null,
 			});
 		}
-	};
+	}, [deleteConfirmState]);
 
-	const handleDeleteRow = (row: FinancialAssetRow) => {
+	const handleDeleteRow = useCallback((row: FinancialAssetRow) => {
 		// Use ISIN as a unique identifier to filter out the row to delete
 		// If ISIN is empty (for a new row), compare by object reference
 		if (row.isin) {
-			setData(data.filter(item => item.isin !== row.isin));
+			setData((previousData) => previousData.filter((item) => item.isin !== row.isin));
 		} else {
 			// For newly added rows without an ISIN, use object reference comparison
-			setData(data.filter(item => item !== row));
+			setData((previousData) => previousData.filter((item) => item !== row));
 		}
-	};
+	}, []);
 
 	// This function handles data updates from the DataTable component
-	const handleDataChange = (newData: FinancialAssetRow[]) => {
+	const handleDataChange = useCallback((newData: FinancialAssetRow[]) => {
 		setData(newData.map((row) => recalculateDerivedFields(row)));
-	};
+	}, []);
+
+	const handleDeleteRowUnknown = useCallback((row: unknown) => {
+		handleDeleteRow(row as FinancialAssetRow);
+	}, [handleDeleteRow]);
+
+	const handleDataChangeUnknown = useCallback((rows: unknown[]) => {
+		handleDataChange(rows as FinancialAssetRow[]);
+	}, [handleDataChange]);
+
+	const serializeRowUnknown = useCallback((row: unknown) => {
+		return sanitizeRowForPersistence(row as FinancialAssetRow);
+	}, []);
+
+	const deserializeRowUnknown = useCallback((row: unknown) => {
+		return rehydrateRowFromPersistence(row as PersistedFinancialAssetRow);
+	}, []);
 
 	// This function will handle cell updates
 	const handleUpdateData = (
@@ -431,7 +447,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 			});
 	};
 
-	const renderRowDetails = (row: FinancialAssetRow) => {
+	const renderRowDetails = useCallback((row: FinancialAssetRow) => {
 		const historicalRows = buildHistoricalRows(row);
 		return (
 			<div className="space-y-3">
@@ -464,7 +480,11 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 				</div>
 			</div>
 		);
-	};
+	}, []);
+
+	const renderRowDetailsUnknown = useCallback((row: unknown) => {
+		return renderRowDetails(row as FinancialAssetRow);
+	}, [renderRowDetails]);
 
 	return (
 		<div className="px-4 mx-auto py-5">
@@ -474,13 +494,13 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 				name={ownerName}
 				onAddRow={handleAddRow}
 				onDeleteAllRows={handleDeleteAllRows}
-				onDeleteRow={(row: unknown) => handleDeleteRow(row as FinancialAssetRow)}
+				onDeleteRow={handleDeleteRowUnknown}
 				onNameChange={handleNameChange} // Use our wrapper function
-				onDataChange={(rows: unknown[]) => handleDataChange(rows as FinancialAssetRow[])}
+				onDataChange={handleDataChangeUnknown}
 				localStorageKey={LOCAL_STORAGE_KEY}
-				serializeRow={(row: unknown) => sanitizeRowForPersistence(row as FinancialAssetRow)}
-				deserializeRow={(row) => rehydrateRowFromPersistence(row as PersistedFinancialAssetRow)}
-				renderRowDetails={(row: unknown) => renderRowDetails(row as FinancialAssetRow)}
+				serializeRow={serializeRowUnknown}
+				deserializeRow={deserializeRowUnknown}
+				renderRowDetails={renderRowDetailsUnknown}
 				meta={{
 					updateData: handleUpdateData,
 					deleteConfirmState: deleteConfirmState.isConfirming,

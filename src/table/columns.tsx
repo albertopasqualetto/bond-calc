@@ -7,7 +7,7 @@ import {
 	EditableDatePickerCell,
 	SuffixEditableTextCell,
 	EditableSelectCell,
-} from "@/components/table-editable-fields/editable-fields";
+} from "@/components/table-editable-fields";
 import { FinancialAsset } from "@/lib/financialAsset";
 
 // This type is used to define the shape of our data.
@@ -93,8 +93,10 @@ const validateNumericInput = (e: KeyboardEvent<HTMLInputElement>) => {
 
 // Helper to check if a value is a valid number
 const isValidNumber = (value: unknown): boolean => {
-  if (value === undefined || value === null || value === '') return true;
-  return !isNaN(parseFloat(String(value))) && isFinite(Number(value));
+	if (value === undefined || value === null || value === '') return true;
+	if (typeof value === "number") return Number.isFinite(value);
+	if (typeof value === "string") return value.trim() === "" || Number.isFinite(Number(value));
+	return false;
 };
 
 const TAX_OPTIONS = [
@@ -104,12 +106,12 @@ const TAX_OPTIONS = [
 ];
 
 const createEditableNumericCell = (suffix: string, className: string) => {
-	return (props: CellContext<FinancialAssetRow, number>) => {
+	return (props: CellContext<FinancialAssetRow, unknown>) => {
 		const value = props.getValue();
 		const isValid = isValidNumber(value);
 		return (
 			<SuffixEditableTextCell
-				{...props}
+				{...(props as CellContext<FinancialAssetRow, string | number>)}
 				suffix={suffix}
 				className={`${className} ${!isValid ? "border-red-500 bg-red-500/10" : ""}`}
 				onKeyDown={validateNumericInput}
