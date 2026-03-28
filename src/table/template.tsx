@@ -54,6 +54,16 @@ interface DataTableProps<TData, TValue> {
 	renderRowDetails?: (row: TData) => ReactNode;
 }
 
+const deserializeRows = <TData,>(
+	items: unknown[],
+	deserializeItem: (item: unknown) => TData | null,
+): TData[] => {
+	return items.flatMap((item) => {
+		const row = deserializeItem(item);
+		return row ? [row] : [];
+	});
+};
+
 const getColumnId = <TData, TValue>(column: ColumnDef<TData, TValue>): string | undefined => {
 	if (column.id) {
 		return String(column.id);
@@ -65,8 +75,13 @@ const getColumnId = <TData, TValue>(column: ColumnDef<TData, TValue>): string | 
 };
 
 const isPrintableColumn = <TData, TValue>(column: ColumnDef<TData, TValue>): boolean => {
-	const meta = column.meta as { printable?: boolean } | undefined;
-	return meta?.printable !== false;
+	const meta: unknown = column.meta;
+	if (!meta || typeof meta !== "object") {
+		return true;
+	}
+
+	const printable: unknown = Reflect.get(meta, "printable");
+	return printable !== false;
 };
 
 const collectAllColumnIds = <TData, TValue>(columns: ColumnDef<TData, TValue>[]): string[] => {
@@ -157,13 +172,16 @@ const toDisplayString = (value: unknown): string => {
 	return JSON.stringify(value);
 };
 
-// Create a memoized row component
-const MemoizedRow = memo(function TableRowMemoized<TData>({
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+	return typeof value === "object" && value !== null;
+};
+
+function TableRowMemoizedInner<TData>({
 	row,
 	onClick,
 }: {
 	row: Row<TData>;
-	onClick: (e: React.MouseEvent, data: unknown) => void;
+	onClick: (e: React.MouseEvent, data: TData) => void;
 }) {
 	return (
 		<TableRow
@@ -179,10 +197,12 @@ const MemoizedRow = memo(function TableRowMemoized<TData>({
 			))}
 		</TableRow>
 	);
-});
+}
+
+const MemoizedRow = memo(TableRowMemoizedInner) as typeof TableRowMemoizedInner;
 
 // Wrap the DataTable component with React.memo
-export const DataTable = memo(function DataTable<TData, TValue>({
+function DataTableInner<TData, TValue>({
 	columns,
 	data,
 	name = "",
@@ -206,11 +226,14 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 	const [isPrinting, setIsPrinting] = useState(false);
 	const [parent] = useAutoAnimate(/* optional config */);
 
-	const deserializeItem = useCallback((item: unknown): TData => {
+	const deserializeItem = useCallback((item: unknown): TData | null => {
 		if (deserializeRow) {
 			return deserializeRow(item);
 		}
-		const record = item as Record<string, unknown>;
+		if (!isRecord(item)) {
+			return null;
+		}
+		const record = item;
 		return {
 			...record,
 			settlementDate: toValidDateOrNull(record.settlementDate),
@@ -220,19 +243,27 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 
 	const extractRowsFromPayload = useCallback((payload: unknown): TData[] => {
 		if (Array.isArray(payload)) {
-			return payload.map(deserializeItem);
+			return deserializeRows(payload, deserializeItem);
 		}
 
-		const record = payload as Record<string, unknown>;
+		if (!isRecord(payload)) {
+			return [];
+		}
+
+		const record = payload;
 		if (Array.isArray(record.tableData)) {
-			return record.tableData.map(deserializeItem);
+			return deserializeRows(record.tableData, deserializeItem);
 		}
 
 		return [];
 	}, [deserializeItem]);
 
 	const applyImportedPayload = useCallback((payload: unknown) => {
-		const record = payload as Record<string, unknown>;
+		if (!isRecord(payload)) {
+			return;
+		}
+
+		const record = payload;
 		if (typeof record.ownerName === "string" && record.ownerName && onNameChange && record.ownerName !== name) {
 			onNameChange(record.ownerName);
 		}
@@ -250,7 +281,11 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			return true;
 		}
 
-		const record = payload as Record<string, unknown>;
+		if (!isRecord(payload)) {
+			return false;
+		}
+
+		const record = payload;
 		if (record.schemaVersion !== STORAGE_SCHEMA_VERSION) {
 			return true;
 		}
@@ -260,7 +295,11 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 		}
 
 		return record.tableData.some((item) => {
-			const row = item as Record<string, unknown>;
+			if (!isRecord(item)) {
+				return false;
+			}
+
+			const row = item;
 			return "todayPrice" in row && !("priceByDate" in row);
 		});
 	}, []);
@@ -270,7 +309,11 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			return;
 		}
 
-		const record = payload as Record<string, unknown>;
+		if (!isRecord(payload)) {
+			return;
+		}
+
+		const record = payload;
 		const ownerNameFromPayload = typeof record.ownerName === "string" ? record.ownerName : name;
 		const rows = extractRowsFromPayload(payload);
 		const tableDataToStore = serializeRow ? rows.map((row) => serializeRow(row)) : rows;
@@ -345,7 +388,14 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			if (savedData) {
 				try {
 					const parsedData: unknown = JSON.parse(savedData);
-					const parsedDataRecord = parsedData as Record<string, unknown>;
+					if (!isRecord(parsedData)) {
+						if (onDataChange && defaultData.length > 0) {
+							onDataChange(defaultData);
+						}
+						return;
+					}
+
+					const parsedDataRecord = parsedData;
 					const isEmptyPayload =
 						parsedDataRecord.ownerName === "" &&
 						Array.isArray(parsedDataRecord.tableData) &&
@@ -472,7 +522,10 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 		const reader = new FileReader();
 		reader.onload = (e) => {
 			try {
-				const result = e.target?.result as string;
+				const result = e.target?.result;
+				if (typeof result !== "string") {
+					throw new Error("Unsupported file content");
+				}
 				const parsedData: unknown = JSON.parse(result);
 
 				applyImportedPayload(parsedData);
@@ -490,7 +543,7 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 	};
 
 	// Modified to check the click target before opening dialog
-	const handleRowClick = (event: React.MouseEvent, row: unknown) => {
+	const handleRowClick = (event: React.MouseEvent, row: TData) => {
 		// Check if the click target is an interactive element
 		const target = event.target as HTMLElement;
 
@@ -505,10 +558,16 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			target.closest('select') !== null ||
 			target.closest('button') !== null ||
 			target.closest('textarea') !== null ||
-			target.closest('[contenteditable="true"]') !== null;
+			target.closest('[contenteditable="true"]') !== null ||
+			target.closest('[role="combobox"]') !== null ||
+			target.closest('[role="listbox"]') !== null ||
+			target.closest('[role="option"]') !== null ||
+			target.closest('[data-slot="select-trigger"]') !== null ||
+			target.closest('[data-slot="select-content"]') !== null ||
+			target.closest('[data-slot="select-item"]') !== null;
 
 		if (!isInteractive) {
-			setSelectedRow(row as TData);
+			setSelectedRow(row);
 			setIsDialogOpen(true);
 		}
 	};
@@ -651,13 +710,16 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 							{renderRowDetails ? renderRowDetails(selectedRow) : columns.map((column, i) => {
 								const id = getColumnId(column);
 								if (!id) return null;
-								const selectedRowRecord = selectedRow as Record<string, unknown>;
+								const selectedRowCandidate: unknown = selectedRow;
+								if (!isRecord(selectedRowCandidate)) {
+									return null;
+								}
 
 								return (
 									<div key={i} className="mb-2">
 										<div className="font-medium">{String(column.header)}</div>
 										<div className="text-sm">
-											{toDisplayString(selectedRowRecord[id])}
+											{toDisplayString(selectedRowCandidate[id])}
 										</div>
 									</div>
 								);
@@ -679,4 +741,6 @@ export const DataTable = memo(function DataTable<TData, TValue>({
 			</Dialog>
 		</div>
 	);
-});
+}
+
+export const DataTable = memo(DataTableInner) as typeof DataTableInner;

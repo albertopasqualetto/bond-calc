@@ -76,6 +76,47 @@ const parseDateInputValue = (value: string): Date | undefined => {
 	return parsedDate;
 };
 
+type EditableTextFieldProps = {
+	initialValue: string;
+	multiline?: boolean;
+	className?: string;
+	safeProps: InputLikeProps;
+	onCommit: (nextValue: string) => void;
+};
+
+const EditableTextField = ({
+	initialValue,
+	multiline,
+	className,
+	safeProps,
+	onCommit,
+}: EditableTextFieldProps): JSX.Element => {
+	const [value, setValue] = useState<string>(initialValue);
+
+	const handleBlur = () => {
+		onCommit(value);
+	};
+
+	return multiline ? (
+		<Textarea
+			value={value}
+			onChange={(e) => setValue(e.target.value)}
+			onBlur={handleBlur}
+			rows={2}
+			cols={200}
+			className={cn("min-h-[30px] min-w-[200px]", className)}
+		/>
+	) : (
+		<Input
+			value={value}
+			onChange={(e) => setValue(e.target.value)}
+			onBlur={handleBlur}
+			className={className}
+			{...safeProps}
+		/>
+	);
+};
+
 export const EditableTextCell = <T extends object>({
 	getValue,
 	renderValue: strippedRenderValue,
@@ -92,36 +133,23 @@ export const EditableTextCell = <T extends object>({
 		className?: string;
 	}): JSX.Element => {
 	const initialValue = getValue();
-	const [value, setValue] = useState<string>(String(initialValue ?? ""));
 	const resetKey = `${index}:${String(id)}:${String(initialValue ?? "")}`;
+	const textValue = String(initialValue ?? "");
+
 	void strippedRenderValue;
 	void strippedCell;
 	const safeProps = omitCellContextProps(props);
 
 	className = cn("print:w-full print:resize-none print:overflow-visible", className);
 
-	const handleBlur = () => {
-		callUpdateData(table, index, String(id), value);
-	};
-
-	return multiline ? (
-		<Textarea
+	return (
+		<EditableTextField
 			key={resetKey}
-			value={String(value ?? "")}
-			onChange={(e) => setValue(e.target.value)}
-			onBlur={handleBlur}
-			rows={2}
-			cols={200}
-			className={cn("min-h-[30px] min-w-[200px]", className)}
-		/>
-	) : (
-		<Input
-			key={resetKey}
-			value={value}
-			onChange={(e) => setValue(e.target.value)}
-			onBlur={handleBlur}
+			initialValue={textValue}
+			multiline={multiline}
 			className={className}
-			{...safeProps}
+			safeProps={safeProps}
+			onCommit={(nextValue) => callUpdateData(table, index, String(id), nextValue)}
 		/>
 	);
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { FinancialAssetRow, FinancialAssetRowCalculated, columns } from "./columns";
 import { DataTable } from "./template";
 import { fromDateKey, isDateToday, toDateKey } from "@/utils/date";
@@ -151,8 +151,11 @@ const rehydrateRowFromPersistence = (row: PersistedFinancialAssetRow): Financial
 	// Backward compatibility for legacy exports that only had todayPrice.
 	// TODO remove in the future
 	if (Object.keys(normalizedPriceByDate).length === 0) {
+		const legacyTodayPriceRaw = (row as Partial<FinancialAssetRow>).todayPrice;
 		const legacyTodayPrice = normalizeNumber(
-			(row as Record<string, unknown>).todayPrice as number | string,
+			typeof legacyTodayPriceRaw === "number" || typeof legacyTodayPriceRaw === "string"
+				? legacyTodayPriceRaw
+				: NaN,
 		);
 		if (Number.isFinite(legacyTodayPrice)) {
 			normalizedPriceByDate = {
@@ -323,142 +326,136 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		setData(newData.map((row) => recalculateDerivedFields(row)));
 	}, []);
 
-	const handleDeleteRowUnknown = useCallback((row: unknown) => {
-		handleDeleteRow(row as FinancialAssetRow);
-	}, [handleDeleteRow]);
-
-	const handleDataChangeUnknown = useCallback((rows: unknown[]) => {
-		handleDataChange(rows as FinancialAssetRow[]);
-	}, [handleDataChange]);
-
-	const serializeRowUnknown = useCallback((row: unknown) => {
-		return sanitizeRowForPersistence(row as FinancialAssetRow);
+	const serializeRow = useCallback((row: FinancialAssetRow) => {
+		return sanitizeRowForPersistence(row);
 	}, []);
 
-	const deserializeRowUnknown = useCallback((row: unknown) => {
+	const deserializeRow = useCallback((row: unknown) => {
 		return rehydrateRowFromPersistence(row as PersistedFinancialAssetRow);
 	}, []);
 
 	// This function will handle cell updates
-	const handleUpdateData = (
-		rowIndex: number,
-		columnId: string,
-		value: unknown,
-	) => {
-		if (rowIndex < 0 || rowIndex >= data.length) {
-			return;
-		}
-
-		const previousRow = data[rowIndex];
-		const previousValue = previousRow[columnId as keyof FinancialAssetRow];
-		const isIsinColumn = columnId === "isin";
-		const isSameValue = value == previousValue;
-		if (!isIsinColumn && isSameValue) {
-			return;
-		}
-
-		setData((prevData) => {
-			return prevData.map((row, idx) => {
-				if (idx !== rowIndex) {
-					return row;
-				}
-
-				const updatedRow: FinancialAssetRow = {
-					...row,
-					[columnId]: value,
-				};
-
-				if (columnId === "todayPrice") {
-					const normalizedPrice = normalizeNumber(
-						typeof value === "string" || typeof value === "number" ? value : NaN,
-					);
-					updatedRow.priceByDate = upsertPriceByDate(
-						updatedRow.priceByDate,
-						toDateKey(new Date()),
-						normalizedPrice,
-					);
-				}
-
-				return recalculateDerivedFields(updatedRow);
-			});
-		});
-
-		if (!isIsinColumn) {
-			return;
-		}
-
-		const isin = typeof value === "string"
-			? value.trim()
-			: typeof value === "number"
-				? String(value).trim()
-				: "";
-		if (isin.length !== 12) {
-			return;
-		}
-
-		const latestPriceDate = getLatestPriceEntry(previousRow.priceByDate)?.dateKey;
-		const todayDateKey = toDateKey(new Date());
-		const shouldRefetch = !isSameValue || latestPriceDate !== todayDateKey;
-		if (!shouldRefetch) {
-			return;
-		}
-
-		setData((currentData) => currentData.map((currentRow, currentIdx) => {
-			if (currentIdx !== rowIndex) {
-				return currentRow;
+	const handleUpdateData = useCallback(
+		(rowIndex: number, columnId: string, value: unknown) => {
+			if (rowIndex < 0 || rowIndex >= data.length) {
+				return;
 			}
-			return {
-				...currentRow,
-				name: "Loading data...",
-			};
-		}));
 
-		fetchBorsaItalianaData(isin)
-			.then((bondData) => {
-				setData((currentData) => {
-					return currentData.map((currentRow, currentIdx) => {
-						if (currentIdx !== rowIndex) {
-							return currentRow;
-						}
+			const previousRow = data[rowIndex];
+			const previousValue = previousRow[columnId as keyof FinancialAssetRow];
+			const isIsinColumn = columnId === "isin";
+			const isSameValue = value == previousValue;
+			
+			if (!isIsinColumn && isSameValue) {
+				return;
+			}
 
-						const normalizedPrice = normalizeNumber(bondData.price.last || 0);
-						const nextRow: FinancialAssetRow = {
-							...currentRow,
-							name: bondData.title,
-							issuingDate: bondData.info.issuingDate,
-							maturityDate: bondData.info.maturityDate,
-							couponRatePerc: bondData.info.couponRatePerc,
-							yearlyFrequency: bondData.info.couponFrequency,
-							priceByDate: upsertPriceByDate(
-								currentRow.priceByDate,
-								todayDateKey,
-								normalizedPrice,
-							),
-						};
+			setData((prevData) => {
+				return prevData.map((row, idx) => {
+					if (idx !== rowIndex) {
+						return row;
+					}
 
-						if (isDateToday(currentRow.settlementDate)) {
-							nextRow.settlementPrice = normalizedPrice;
-						}
+					const updatedRow: FinancialAssetRow = {
+						...row,
+						[columnId]: value,
+					};
 
-						return recalculateDerivedFields(nextRow);
-					});
-				});
-			})
-			.catch((error) => {
-				console.error(`Error fetching data for ISIN ${isin}:`, error);
-				setData((currentData) => {
-					return currentData.map((currentRow, currentIdx) => {
-						if (currentIdx !== rowIndex) {
-							return currentRow;
-						}
-						return {
-							...currentRow,
-							name: "Data fetch failed",
-						};
-					});
+					if (columnId === "todayPrice") {
+						const normalizedPrice = normalizeNumber(
+							typeof value === "string" || typeof value === "number" ? value : NaN,
+						);
+						updatedRow.priceByDate = upsertPriceByDate(
+							updatedRow.priceByDate,
+							toDateKey(new Date()),
+							normalizedPrice,
+						);
+					}
+
+					return recalculateDerivedFields(updatedRow);
 				});
 			});
-	};
+
+			if (!isIsinColumn) {
+				return;
+			}
+
+			const isin = typeof value === "string"
+				? value.trim()
+				: typeof value === "number"
+					? String(value).trim()
+					: "";
+			
+			if (isin.length !== 12) {
+				return;
+			}
+
+			const latestPriceDate = getLatestPriceEntry(previousRow.priceByDate)?.dateKey;
+			const todayDateKey = toDateKey(new Date());
+			const shouldRefetch = !isSameValue || latestPriceDate !== todayDateKey;
+			
+			if (!shouldRefetch) {
+				return;
+			}
+
+			setData((currentData) => currentData.map((currentRow, currentIdx) => {
+				if (currentIdx !== rowIndex) {
+					return currentRow;
+				}
+				return {
+					...currentRow,
+					name: "Loading data...",
+				};
+			}));
+
+			fetchBorsaItalianaData(isin)
+				.then((bondData) => {
+					setData((currentData) => {
+						return currentData.map((currentRow, currentIdx) => {
+							if (currentIdx !== rowIndex) {
+								return currentRow;
+							}
+
+							const normalizedPrice = normalizeNumber(bondData.price.last || 0);
+							const nextRow: FinancialAssetRow = {
+								...currentRow,
+								name: bondData.title,
+								issuingDate: bondData.info.issuingDate,
+								maturityDate: bondData.info.maturityDate,
+								couponRatePerc: bondData.info.couponRatePerc,
+								yearlyFrequency: bondData.info.couponFrequency,
+								priceByDate: upsertPriceByDate(
+									currentRow.priceByDate,
+									todayDateKey,
+									normalizedPrice,
+								),
+							};
+
+							if (isDateToday(currentRow.settlementDate)) {
+								nextRow.settlementPrice = normalizedPrice;
+							}
+
+							return recalculateDerivedFields(nextRow);
+						});
+					});
+				})
+				.catch((error) => {
+					console.error(`[handleUpdateData] Error fetching data for ISIN ${isin}:`, error);
+					setData((currentData) => {
+						return currentData.map((currentRow, currentIdx) => {
+							if (currentIdx !== rowIndex) {
+								return currentRow;
+							}
+							return {
+								...currentRow,
+								name: "Data fetch failed",
+							};
+						});
+					});
+				});
+		},
+		[data],
+	);
 
 	const renderRowDetails = useCallback((row: FinancialAssetRow) => {
 		const historicalRows = buildHistoricalRows(row);
@@ -495,29 +492,30 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		);
 	}, []);
 
-	const renderRowDetailsUnknown = useCallback((row: unknown) => {
-		return renderRowDetails(row as FinancialAssetRow);
-	}, [renderRowDetails]);
+	const tableMeta = useMemo(
+		() => ({
+			updateData: handleUpdateData,
+			deleteConfirmState: deleteConfirmState.isConfirming,
+		}),
+		[handleUpdateData, deleteConfirmState.isConfirming],
+	);
 
 	return (
 		<div className="px-4 mx-auto py-5">
 			<DataTable
-				columns={columns as unknown as Parameters<typeof DataTable>[0]["columns"]}
-				data={data as unknown as Parameters<typeof DataTable>[0]["data"]}
+				columns={columns}
+				data={data}
 				name={name}
 				onAddRow={handleAddRow}
 				onDeleteAllRows={handleDeleteAllRows}
-				onDeleteRow={handleDeleteRowUnknown}
+				onDeleteRow={handleDeleteRow}
 				onNameChange={handleNameChange} // Use our wrapper function
-				onDataChange={handleDataChangeUnknown}
+				onDataChange={handleDataChange}
 				localStorageKey={LOCAL_STORAGE_KEY}
-				serializeRow={serializeRowUnknown}
-				deserializeRow={deserializeRowUnknown}
-				renderRowDetails={renderRowDetailsUnknown}
-				meta={{
-					updateData: handleUpdateData,
-					deleteConfirmState: deleteConfirmState.isConfirming,
-				}}
+				serializeRow={serializeRow}
+				deserializeRow={deserializeRow}
+				renderRowDetails={renderRowDetails}
+				meta={tableMeta}
 			/>
 		</div>
 	);
