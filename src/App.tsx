@@ -80,10 +80,10 @@ export default function App() {
 					<Button
 						variant={!isEditing ? "ghost" : "default"}
 						onClick={changeName}
-						className="size-1 ml-1 print:hidden"
+						className="ml-1 print:hidden"
 					>
 						{isEditing ? (
-							<Check className="w-2 h-2" />
+							<Check className="w-2 h-3" />
 						) : (
 							<PenLine className="w-2 h-2" />
 						)}
