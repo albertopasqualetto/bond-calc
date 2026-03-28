@@ -1,7 +1,7 @@
 // @ts-check
 
 import eslint from '@eslint/js';
-import { defineConfig } from 'eslint/config';
+import { defineConfig, globalIgnores } from 'eslint/config'
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
@@ -9,13 +9,14 @@ import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 
 export default defineConfig(
-	{
-		ignores: ['dist', 'node_modules'],
-	},
-	eslint.configs.recommended,
-	...tseslint.configs.recommendedTypeChecked,
+	globalIgnores(['dist', 'node_modules', 'build']),
 	{
 		files: ['**/*.{ts,tsx}'],
+		extends: [
+			eslint.configs.recommended,
+			...tseslint.configs.recommendedTypeChecked,
+			reactHooks.configs.flat.recommended,
+		],
 		languageOptions: {
 			ecmaVersion: 2024,
 			sourceType: 'module',
@@ -27,7 +28,6 @@ export default defineConfig(
 			},
 		},
 		plugins: {
-			'react-hooks': reactHooks,
 			'react-refresh': reactRefresh,
 		},
 		rules: {

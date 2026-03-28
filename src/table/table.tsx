@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { FinancialAssetRow, FinancialAssetRowCalculated, columns } from "./columns";
 import { DataTable } from "./template";
 import { fromDateKey, isDateToday, toDateKey } from "@/utils/date";
@@ -215,8 +215,8 @@ const buildHistoricalRows = (row: FinancialAssetRow): HistoricalCalculationRow[]
 		return {
 			dateKey,
 			price,
-			annualYieldGrossToday: settlementAsset!.computeYield(date, price),
-			annualYieldNetToday: settlementAsset!.computeYieldNet(date, price),
+			annualYieldGrossToday: settlementAsset.computeYield(date, price),
+			annualYieldNetToday: settlementAsset.computeYieldNet(date, price),
 			totalValueToday,
 			totalValueDifference: totalValueToday - totalValueSettlement,
 		};
@@ -230,20 +230,13 @@ interface YieldsTableProps {
 
 export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 	const [data, setData] = useState<FinancialAssetRow[]>([]);
-	const [ownerName, setOwnerName] = useState<string>(name);
 	const [deleteConfirmState, setDeleteConfirmState] = useState({
 		isConfirming: false,
 		timeoutId: null as NodeJS.Timeout | null,
 	});
 
-	// Update local state when name prop changes
-	useEffect(() => {
-		setOwnerName(name);
-	}, [name]);
-
 	// Handle name changes from within this component or from imported data
 	const handleNameChange = useCallback((newName: string) => {
-		setOwnerName(newName);
 		// Propagate the name change to the parent component if callback exists
 		if (onNameChange) {
 			onNameChange(newName);
@@ -269,7 +262,15 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		// Create a row using the financial asset's JSON data with additional UI fields
 		const shortId = generateShortId();
 		const emptyAsset: FinancialAssetRow = {
-			 ...JSON.parse(JSON.stringify(emptyFinancialAsset.dict)), // Safer approach than using 'as any'
+			isin: emptyFinancialAsset.isin,
+			issuingDate: new Date(emptyFinancialAsset.issuingDate),
+			settlementDate: new Date(emptyFinancialAsset.settlementDate),
+			maturityDate: new Date(emptyFinancialAsset.maturityDate),
+			couponRatePerc: emptyFinancialAsset.couponRatePerc,
+			settlementPrice: emptyFinancialAsset.settlementPrice,
+			redemptionPrice: emptyFinancialAsset.redemptionPrice,
+			yearlyFrequency: emptyFinancialAsset.yearlyFrequency,
+			capitalGainTaxPerc: emptyFinancialAsset.capitalGainTaxPerc,
 			name: "",
 			priceByDate: {},
 			totalValueNominal: NaN,
@@ -386,7 +387,11 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 			return;
 		}
 
-		const isin = String(value || "").trim();
+		const isin = typeof value === "string"
+			? value.trim()
+			: typeof value === "number"
+				? String(value).trim()
+				: "";
 		if (isin.length !== 12) {
 			return;
 		}
@@ -499,7 +504,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 			<DataTable
 				columns={columns as unknown as Parameters<typeof DataTable>[0]["columns"]}
 				data={data as unknown as Parameters<typeof DataTable>[0]["data"]}
-				name={ownerName}
+				name={name}
 				onAddRow={handleAddRow}
 				onDeleteAllRows={handleDeleteAllRows}
 				onDeleteRow={handleDeleteRowUnknown}

@@ -3,7 +3,7 @@
 import type { CellContext } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { JSX, useEffect, useState, ComponentPropsWithoutRef } from "react";
+import { JSX, useState, ComponentPropsWithoutRef } from "react";
 import {
 	Select,
 	SelectTrigger,
@@ -93,21 +93,12 @@ export const EditableTextCell = <T extends object>({
 	}): JSX.Element => {
 	const initialValue = getValue();
 	const [value, setValue] = useState<string>(String(initialValue ?? ""));
+	const resetKey = `${index}:${String(id)}:${String(initialValue ?? "")}`;
 	void strippedRenderValue;
 	void strippedCell;
 	const safeProps = omitCellContextProps(props);
 
 	className = cn("print:w-full print:resize-none print:overflow-visible", className);
-
-	useEffect(() => {
-		setValue((previousValue) => {
-			const nextValue = String(initialValue ?? "");
-			if (previousValue === nextValue) {
-				return previousValue;
-			}
-			return nextValue;
-		});
-	}, [initialValue]);
 
 	const handleBlur = () => {
 		callUpdateData(table, index, String(id), value);
@@ -115,6 +106,7 @@ export const EditableTextCell = <T extends object>({
 
 	return multiline ? (
 		<Textarea
+			key={resetKey}
 			value={String(value ?? "")}
 			onChange={(e) => setValue(e.target.value)}
 			onBlur={handleBlur}
@@ -124,6 +116,7 @@ export const EditableTextCell = <T extends object>({
 		/>
 	) : (
 		<Input
+			key={resetKey}
 			value={value}
 			onChange={(e) => setValue(e.target.value)}
 			onBlur={handleBlur}
@@ -166,30 +159,19 @@ export const EditableCheckboxCell = <T extends object>({
 		className?: string;
 	}): JSX.Element => {
 	const initialValue = getValue();
-	const [value, setValue] = useState(initialValue);
 	void strippedRenderValue;
 	void strippedCell;
 	const safeProps = omitCellContextProps(props);
 
-	useEffect(() => {
-		setValue((previousValue) => {
-			if (Object.is(previousValue, initialValue)) {
-				return previousValue;
-			}
-			return initialValue;
-		});
-	}, [initialValue]);
-
-	const handleChange = () => {
-		const newValue = !value;
-		setValue(newValue);
+	const handleChange = (checked: boolean | "indeterminate") => {
+		const newValue = checked === true;
 		callUpdateData(table, index, String(id), newValue);
 	};
 
 	return (
 		<Checkbox
 			className={cn("h-8 w-8", className)}
-			checked={value}
+			checked={Boolean(initialValue)}
 			onCheckedChange={handleChange}
 			{...safeProps}
 		/>
@@ -216,31 +198,21 @@ export const EditableSelectCell = <T extends object>({
 		"onValueChange" | "value" | "defaultValue"
 	>) => {
 	const initialValue = getValue();
-	const [value, setValue] = useState(initialValue);
 	const [open, setOpen] = useState(false);
 	void strippedRenderValue;
 	void strippedCell;
 	const safeProps = omitCellContextProps(props);
+	const selectedValue = typeof initialValue === "string" ? initialValue : "";
 
 	function handleChange(value: unknown) {
 		const nextValue = String(value);
-		setValue(nextValue);
 		callUpdateData(table, row.index, String(column.id), nextValue);
 	}
-
-	useEffect(() => {
-		setValue((previousValue) => {
-			if (Object.is(previousValue, initialValue)) {
-				return previousValue;
-			}
-			return initialValue;
-		});
-	}, [initialValue]);
 
 	return (
 		<Select
 			onValueChange={handleChange}
-			value={value}
+			value={selectedValue}
 			open={open}
 			onOpenChange={setOpen}
 			{...safeProps}
