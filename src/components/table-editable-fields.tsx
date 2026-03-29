@@ -13,21 +13,28 @@ import {
 	SelectItem,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
 	InputGroupInput,
 } from "@/components/ui/input-group";
-import { Textarea } from "@/components/ui/textarea"
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatNumber, normalizeNumber } from "@/utils/number";
 import { CalendarIcon } from "lucide-react";
 import { enUS } from "date-fns/locale";
 import * as dateFnsLocales from "date-fns/locale";
 
-type InputLikeProps = Omit<ComponentPropsWithoutRef<typeof Input>, "value" | "defaultValue" | "onChange" | "onBlur">;
+type InputLikeProps = Omit<
+	ComponentPropsWithoutRef<typeof Input>,
+	"value" | "defaultValue" | "onChange" | "onBlur"
+>;
 
 type TableMetaUpdater = {
 	updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
@@ -41,7 +48,8 @@ type UnsafeCellContextProps = {
 const omitCellContextProps = <TProps extends Record<string, unknown>>(
 	props: TProps,
 ): Omit<TProps, keyof UnsafeCellContextProps> => {
-	const { renderValue, cell, ...safeProps } = props as TProps & UnsafeCellContextProps;
+	const { renderValue, cell, ...safeProps } = props as TProps &
+		UnsafeCellContextProps;
 	void renderValue;
 	void cell;
 	return safeProps as Omit<TProps, keyof UnsafeCellContextProps>;
@@ -53,7 +61,11 @@ const callUpdateData = <T extends object>(
 	columnId: string,
 	value: unknown,
 ) => {
-	(table.options.meta as TableMetaUpdater | undefined)?.updateData?.(rowIndex, columnId, value);
+	(table.options.meta as TableMetaUpdater | undefined)?.updateData?.(
+		rowIndex,
+		columnId,
+		value,
+	);
 };
 
 const formatDateInputValue = (value: Date | undefined): string => {
@@ -73,7 +85,10 @@ const normalizeDate = (value: Date): Date => {
 	return normalized;
 };
 
-const isSameDate = (first: Date | undefined, second: Date | undefined): boolean => {
+const isSameDate = (
+	first: Date | undefined,
+	second: Date | undefined,
+): boolean => {
 	if (!first || !second) {
 		return false;
 	}
@@ -98,7 +113,11 @@ const parseDateInputValue = (value: string): Date | undefined => {
 	const month = Number(match[2]);
 	const day = Number(match[3]);
 
-	if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+	if (
+		!Number.isFinite(year) ||
+		!Number.isFinite(month) ||
+		!Number.isFinite(day)
+	) {
 		return undefined;
 	}
 
@@ -118,7 +137,9 @@ const parseDateInputValue = (value: string): Date | undefined => {
 	return normalizeDate(parsedDate);
 };
 
-type CalendarLocale = NonNullable<ComponentPropsWithoutRef<typeof Calendar>["locale"]>;
+type CalendarLocale = NonNullable<
+	ComponentPropsWithoutRef<typeof Calendar>["locale"]
+>;
 type CalendarLocaleWithCode = CalendarLocale & { code: string };
 
 const isCalendarLocale = (value: unknown): value is CalendarLocaleWithCode => {
@@ -132,9 +153,9 @@ const isCalendarLocale = (value: unknown): value is CalendarLocaleWithCode => {
 	);
 };
 
-const calendarLocales: CalendarLocaleWithCode[] = (Object.values(dateFnsLocales) as unknown[]).filter(
-	isCalendarLocale,
-);
+const calendarLocales: CalendarLocaleWithCode[] = (
+	Object.values(dateFnsLocales) as unknown[]
+).filter(isCalendarLocale);
 
 const resolveCalendarLocale = (
 	locale: string | undefined,
@@ -164,8 +185,10 @@ const resolveCalendarLocale = (
 		return baseMatch;
 	}
 
-	const languageRegionFallback = calendarLocales.find((candidate) =>
-		candidate.code?.toLowerCase().startsWith(`${baseLanguage}-`) ?? false,
+	const languageRegionFallback = calendarLocales.find(
+		(candidate) =>
+			candidate.code?.toLowerCase().startsWith(`${baseLanguage}-`) ??
+			false,
 	);
 
 	return languageRegionFallback ?? enUS;
@@ -173,7 +196,10 @@ const resolveCalendarLocale = (
 
 const getFractionDigits = (value: string): number => {
 	const trimmedValue = value.trim();
-	const lastSeparatorIndex = Math.max(trimmedValue.lastIndexOf("."), trimmedValue.lastIndexOf(","));
+	const lastSeparatorIndex = Math.max(
+		trimmedValue.lastIndexOf("."),
+		trimmedValue.lastIndexOf(","),
+	);
 
 	if (lastSeparatorIndex < 0) {
 		return 0;
@@ -187,7 +213,10 @@ const getFractionDigits = (value: string): number => {
 	return fractionPart.length;
 };
 
-const formatNumericInputDisplayValue = (value: string | number, locale: string): string => {
+const formatNumericInputDisplayValue = (
+	value: string | number,
+	locale: string,
+): string => {
 	if (typeof value === "number") {
 		if (!Number.isFinite(value)) {
 			return "";
@@ -309,8 +338,12 @@ const LocalizedNumericInputField = ({
 	locale,
 	onCommit,
 }: LocalizedNumericInputFieldProps): JSX.Element => {
-	const [lastCommittedValue, setLastCommittedValue] = useState<string | number>(initialValue);
-	const [value, setValue] = useState<string>(() => formatNumericInputDisplayValue(initialValue, locale));
+	const [lastCommittedValue, setLastCommittedValue] = useState<
+		string | number
+	>(initialValue);
+	const [value, setValue] = useState<string>(() =>
+		formatNumericInputDisplayValue(initialValue, locale),
+	);
 
 	const handleFocus = () => {
 		setValue(toEditableNumericInputValue(lastCommittedValue));
@@ -349,7 +382,9 @@ const EditableDatePickerField = ({
 	const [month, setMonth] = useState<Date | undefined>(
 		initialValue ? normalizeDate(initialValue) : undefined,
 	);
-	const [inputValue, setInputValue] = useState<string>(() => formatDateInputValue(initialValue));
+	const [inputValue, setInputValue] = useState<string>(() =>
+		formatDateInputValue(initialValue),
+	);
 	const calendarLocale = resolveCalendarLocale(locale);
 
 	const commitDate = (nextDate: Date | undefined) => {
@@ -479,7 +514,10 @@ export const EditableTextCell = <T extends object>({
 	void strippedCell;
 	const safeProps = omitCellContextProps(props);
 
-	className = cn("print:w-full print:resize-none print:overflow-visible", className);
+	className = cn(
+		"print:w-full print:resize-none print:overflow-visible",
+		className,
+	);
 
 	return (
 		<EditableTextField
@@ -488,7 +526,9 @@ export const EditableTextCell = <T extends object>({
 			multiline={multiline}
 			className={className}
 			safeProps={safeProps}
-			onCommit={(nextValue) => callUpdateData(table, index, String(id), nextValue)}
+			onCommit={(nextValue) =>
+				callUpdateData(table, index, String(id), nextValue)
+			}
 		/>
 	);
 };
@@ -531,9 +571,10 @@ export const LocalizedSuffixEditableTextCell = <T extends object>({
 	}): JSX.Element => {
 	const initialValue = getValue();
 	const resetKey = `${index}:${String(id)}:${String(initialValue ?? "")}:${locale}`;
-	const numericValue = typeof initialValue === "number" || typeof initialValue === "string"
-		? initialValue
-		: "";
+	const numericValue =
+		typeof initialValue === "number" || typeof initialValue === "string"
+			? initialValue
+			: "";
 
 	void strippedRenderValue;
 	void strippedCell;
@@ -547,7 +588,9 @@ export const LocalizedSuffixEditableTextCell = <T extends object>({
 				className={className}
 				safeProps={safeProps}
 				locale={locale}
-				onCommit={(nextValue) => callUpdateData(table, index, String(id), nextValue)}
+				onCommit={(nextValue) =>
+					callUpdateData(table, index, String(id), nextValue)
+				}
 			/>
 			<span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
 				{suffix}
@@ -618,8 +661,11 @@ export const EditableSelectCell = <T extends object>({
 		typeof initialValue === "string" || typeof initialValue === "number"
 			? String(initialValue)
 			: "";
-	const selectedOption = options.find((option) => option.value === selectedValue);
-	const resolvedPlaceholder = placeholder || t("table.placeholders.selectValue");
+	const selectedOption = options.find(
+		(option) => option.value === selectedValue,
+	);
+	const resolvedPlaceholder =
+		placeholder || t("table.placeholders.selectValue");
 
 	function handleChange(value: unknown) {
 		const nextValue = String(value);
@@ -635,7 +681,9 @@ export const EditableSelectCell = <T extends object>({
 			{...safeProps}
 		>
 			<SelectTrigger className={className}>
-				<SelectValue placeholder={resolvedPlaceholder}>{selectedOption?.label}</SelectValue>
+				<SelectValue placeholder={resolvedPlaceholder}>
+					{selectedOption?.label}
+				</SelectValue>
 			</SelectTrigger>
 			<SelectContent>
 				{options.map((option) => (
@@ -659,7 +707,10 @@ export const EditableDatePickerCell = <T extends object>({
 	...props
 }: CellContext<T, Date> & {
 	className?: string;
-} & Omit<ComponentPropsWithoutRef<typeof Input>, "value" | "defaultValue" | "onChange" | "onBlur">) => {
+} & Omit<
+		ComponentPropsWithoutRef<typeof Input>,
+		"value" | "defaultValue" | "onChange" | "onBlur"
+	>) => {
 	const { i18n } = useTranslation();
 	const initialValue = getValue();
 	const locale = i18n.resolvedLanguage || "en";

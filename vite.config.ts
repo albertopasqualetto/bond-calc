@@ -1,29 +1,29 @@
-import path from "path"
-import tailwindcss from "@tailwindcss/vite"
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import path from "path";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  // define: {
-  //   'process.env': process.env  // TODO: check if this works after build
-  // },
-  base: "/bond-calc/",
-  preview: {
-    port: 8080,
-    strictPort: true,
-   },
-   server: {
-    port: 8080,
-    strictPort: true,
-    host: true,
-    origin: "http://0.0.0.0:8080",
-    allowedHosts: true, // TODO change
-   },
-})
+	plugins: [react(), tailwindcss()],
+	resolve: {
+		alias: {
+			"@": path.resolve(__dirname, "./src"),
+		},
+	},
+	// define: {
+	//   'process.env': process.env  // TODO: check if this works after build
+	// },
+	base: "/bond-calc/",
+	preview: {
+		port: 8080,
+		strictPort: true,
+	},
+	server: {
+		port: 8080,
+		strictPort: true,
+		host: true,
+		origin: "http://0.0.0.0:8080",
+		allowedHosts: true, // TODO change
+	},
+});

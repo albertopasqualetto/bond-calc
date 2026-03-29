@@ -2,10 +2,19 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { FinancialAssetRow, FinancialAssetRowCalculated, useFinancialAssetColumns } from "./columns";
+import {
+	FinancialAssetRow,
+	FinancialAssetRowCalculated,
+	useFinancialAssetColumns,
+} from "./columns";
 import { DataTable } from "./template";
 import { fromDateKey, isDateToday, toDateKey } from "@/utils/date";
-import { formatCurrency, formatNumber, formatPercent, normalizeNumber } from "@/utils/number";
+import {
+	formatCurrency,
+	formatNumber,
+	formatPercent,
+	normalizeNumber,
+} from "@/utils/number";
 import { fetchBorsaItalianaData } from "@/fetching/fetchBorsaItaliana";
 import { FinancialAsset } from "@/lib/financialAsset";
 
@@ -21,7 +30,10 @@ const formatRowId = (isin: string, shortId: string): string => {
 	return isin ? `${isin}-${shortId}` : shortId;
 };
 
-type PersistedFinancialAssetRow = Omit<FinancialAssetRow, keyof FinancialAssetRowCalculated>;
+type PersistedFinancialAssetRow = Omit<
+	FinancialAssetRow,
+	keyof FinancialAssetRowCalculated
+>;
 
 interface HistoricalCalculationRow {
 	dateKey: string;
@@ -45,7 +57,11 @@ const getLatestPriceEntry = (priceByDate?: Record<string, number>) => {
 	};
 };
 
-const upsertPriceByDate = (existing: Record<string, number> | undefined, dateKey: string, price: number) => {
+const upsertPriceByDate = (
+	existing: Record<string, number> | undefined,
+	dateKey: string,
+	price: number,
+) => {
 	return {
 		...(existing || {}),
 		[dateKey]: Number(price),
@@ -62,7 +78,8 @@ const calculateTotalValues = (row: FinancialAssetRow) => {
 	}
 
 	const totalValueNominal = normalizeNumber(row.totalValueNominal);
-	const totalValueSettlement = (totalValueNominal / row.redemptionPrice) * row.settlementPrice;
+	const totalValueSettlement =
+		(totalValueNominal / row.redemptionPrice) * row.settlementPrice;
 	const totalValueToday = row.todayPrice
 		? (totalValueNominal / row.redemptionPrice) * row.todayPrice
 		: NaN;
@@ -74,7 +91,9 @@ const calculateTotalValues = (row: FinancialAssetRow) => {
 	};
 };
 
-const recalculateDerivedFields = (row: FinancialAssetRow): FinancialAssetRow => {
+const recalculateDerivedFields = (
+	row: FinancialAssetRow,
+): FinancialAssetRow => {
 	const nextRow: FinancialAssetRow = {
 		...row,
 	};
@@ -104,8 +123,14 @@ const recalculateDerivedFields = (row: FinancialAssetRow): FinancialAssetRow => 
 
 		if (latestPrice) {
 			const referenceDate = fromDateKey(latestPrice.dateKey);
-			nextRow.annualYieldGrossToday = settlementAsset.computeYield(referenceDate, latestPrice.price);
-			nextRow.annualYieldNetToday = settlementAsset.computeYieldNet(referenceDate, latestPrice.price);
+			nextRow.annualYieldGrossToday = settlementAsset.computeYield(
+				referenceDate,
+				latestPrice.price,
+			);
+			nextRow.annualYieldNetToday = settlementAsset.computeYieldNet(
+				referenceDate,
+				latestPrice.price,
+			);
 		}
 	} catch (error) {
 		console.error("Error calculating yield:", error);
@@ -119,7 +144,9 @@ const recalculateDerivedFields = (row: FinancialAssetRow): FinancialAssetRow => 
 	return nextRow;
 };
 
-const sanitizeRowForPersistence = (row: FinancialAssetRow): PersistedFinancialAssetRow => {
+const sanitizeRowForPersistence = (
+	row: FinancialAssetRow,
+): PersistedFinancialAssetRow => {
 	const {
 		annualYieldGross,
 		annualYieldNet,
@@ -144,17 +171,24 @@ const sanitizeRowForPersistence = (row: FinancialAssetRow): PersistedFinancialAs
 	return baseRow;
 };
 
-const rehydrateRowFromPersistence = (row: PersistedFinancialAssetRow): FinancialAssetRow => {
+const rehydrateRowFromPersistence = (
+	row: PersistedFinancialAssetRow,
+): FinancialAssetRow => {
 	let normalizedPriceByDate = Object.fromEntries(
-		Object.entries(row.priceByDate || {}).map(([dateKey, price]) => [dateKey, normalizeNumber(price)]),
+		Object.entries(row.priceByDate || {}).map(([dateKey, price]) => [
+			dateKey,
+			normalizeNumber(price),
+		]),
 	);
 
 	// Backward compatibility for legacy exports that only had todayPrice.
 	// TODO remove in the future
 	if (Object.keys(normalizedPriceByDate).length === 0) {
-		const legacyTodayPriceRaw = (row as Partial<FinancialAssetRow>).todayPrice;
+		const legacyTodayPriceRaw = (row as Partial<FinancialAssetRow>)
+			.todayPrice;
 		const legacyTodayPrice = normalizeNumber(
-			typeof legacyTodayPriceRaw === "number" || typeof legacyTodayPriceRaw === "string"
+			typeof legacyTodayPriceRaw === "number" ||
+				typeof legacyTodayPriceRaw === "string"
 				? legacyTodayPriceRaw
 				: NaN,
 		);
@@ -168,15 +202,21 @@ const rehydrateRowFromPersistence = (row: PersistedFinancialAssetRow): Financial
 	const shortId = generateShortId();
 	return recalculateDerivedFields({
 		...row,
-		settlementDate: row.settlementDate ? new Date(row.settlementDate) : new Date(),
-		maturityDate: row.maturityDate ? new Date(row.maturityDate) : new Date(),
+		settlementDate: row.settlementDate
+			? new Date(row.settlementDate)
+			: new Date(),
+		maturityDate: row.maturityDate
+			? new Date(row.maturityDate)
+			: new Date(),
 		issuingDate: row.issuingDate ? new Date(row.issuingDate) : new Date(),
 		priceByDate: normalizedPriceByDate,
 		_rowId: formatRowId(row.isin, shortId), // Generate a new unique ID for each loaded row
 	});
 };
 
-const buildHistoricalRows = (row: FinancialAssetRow): HistoricalCalculationRow[] => {
+const buildHistoricalRows = (
+	row: FinancialAssetRow,
+): HistoricalCalculationRow[] => {
 	const entries = Object.entries(row.priceByDate || {})
 		.filter(([, price]) => Number.isFinite(Number(price)))
 		.sort(([first], [second]) => first.localeCompare(second));
@@ -202,9 +242,10 @@ const buildHistoricalRows = (row: FinancialAssetRow): HistoricalCalculationRow[]
 		return [];
 	}
 
-	const totalValueNominal = row.totalValueNominal && row.redemptionPrice
-		? normalizeNumber(row.totalValueNominal)
-		: NaN;
+	const totalValueNominal =
+		row.totalValueNominal && row.redemptionPrice
+			? normalizeNumber(row.totalValueNominal)
+			: NaN;
 	const totalValueSettlement = totalValueNominal
 		? (totalValueNominal / row.redemptionPrice) * row.settlementPrice
 		: NaN;
@@ -243,12 +284,15 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 	});
 
 	// Handle name changes from within this component or from imported data
-	const handleNameChange = useCallback((newName: string) => {
-		// Propagate the name change to the parent component if callback exists
-		if (onNameChange) {
-			onNameChange(newName);
-		}
-	}, [onNameChange]);
+	const handleNameChange = useCallback(
+		(newName: string) => {
+			// Propagate the name change to the parent component if callback exists
+			if (onNameChange) {
+				onNameChange(newName);
+			}
+		},
+		[onNameChange],
+	);
 
 	const handleAddRow = useCallback(() => {
 		const today = new Date();
@@ -263,7 +307,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 			NaN,
 			100,
 			NaN,
-			NaN
+			NaN,
 		);
 
 		// Create a row using the financial asset's JSON data with additional UI fields
@@ -289,7 +333,10 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		};
 
 		// Add the new empty row to the data
-		setData((previousData) => [...previousData, recalculateDerivedFields(emptyAsset)]);
+		setData((previousData) => [
+			...previousData,
+			recalculateDerivedFields(emptyAsset),
+		]);
 	}, []);
 
 	const handleDeleteAllRows = useCallback(() => {
@@ -322,7 +369,9 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 	const handleDeleteRow = useCallback((row: FinancialAssetRow) => {
 		// Use the unique row ID to identify and delete the correct row
 		// This prevents deleting multiple rows with the same ISIN
-		setData((previousData) => previousData.filter((item) => item._rowId !== row._rowId));
+		setData((previousData) =>
+			previousData.filter((item) => item._rowId !== row._rowId),
+		);
 	}, []);
 
 	// This function handles data updates from the DataTable component
@@ -346,10 +395,11 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 			}
 
 			const previousRow = data[rowIndex];
-			const previousValue = previousRow[columnId as keyof FinancialAssetRow];
+			const previousValue =
+				previousRow[columnId as keyof FinancialAssetRow];
 			const isIsinColumn = columnId === "isin";
 			const isSameValue = value == previousValue;
-			
+
 			if (!isIsinColumn && isSameValue) {
 				return;
 			}
@@ -367,7 +417,10 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 
 					if (columnId === "todayPrice") {
 						const normalizedPrice = normalizeNumber(
-							typeof value === "string" || typeof value === "number" ? value : NaN,
+							typeof value === "string" ||
+								typeof value === "number"
+								? value
+								: NaN,
 						);
 						updatedRow.priceByDate = upsertPriceByDate(
 							updatedRow.priceByDate,
@@ -384,33 +437,39 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 				return;
 			}
 
-			const isin = typeof value === "string"
-				? value.trim()
-				: typeof value === "number"
-					? String(value).trim()
-					: "";
-			
+			const isin =
+				typeof value === "string"
+					? value.trim()
+					: typeof value === "number"
+						? String(value).trim()
+						: "";
+
 			if (isin.length !== 12) {
 				return;
 			}
 
-			const latestPriceDate = getLatestPriceEntry(previousRow.priceByDate)?.dateKey;
+			const latestPriceDate = getLatestPriceEntry(
+				previousRow.priceByDate,
+			)?.dateKey;
 			const todayDateKey = toDateKey(new Date());
-			const shouldRefetch = !isSameValue || latestPriceDate !== todayDateKey;
-			
+			const shouldRefetch =
+				!isSameValue || latestPriceDate !== todayDateKey;
+
 			if (!shouldRefetch) {
 				return;
 			}
 
-			setData((currentData) => currentData.map((currentRow, currentIdx) => {
-				if (currentIdx !== rowIndex) {
-					return currentRow;
-				}
-				return {
-					...currentRow,
-					name: t("table.status.loadingData"),
-				};
-			}));
+			setData((currentData) =>
+				currentData.map((currentRow, currentIdx) => {
+					if (currentIdx !== rowIndex) {
+						return currentRow;
+					}
+					return {
+						...currentRow,
+						name: t("table.status.loadingData"),
+					};
+				}),
+			);
 
 			fetchBorsaItalianaData(isin)
 				.then((bondData) => {
@@ -420,7 +479,9 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 								return currentRow;
 							}
 
-							const normalizedPrice = normalizeNumber(bondData.price.last || 0);
+							const normalizedPrice = normalizeNumber(
+								bondData.price.last || 0,
+							);
 							const nextRow: FinancialAssetRow = {
 								...currentRow,
 								name: bondData.title,
@@ -444,7 +505,10 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 					});
 				})
 				.catch((error) => {
-					console.error(`[handleUpdateData] Error fetching data for ISIN ${isin}:`, error);
+					console.error(
+						`[handleUpdateData] Error fetching data for ISIN ${isin}:`,
+						error,
+					);
 					setData((currentData) => {
 						return currentData.map((currentRow, currentIdx) => {
 							if (currentIdx !== rowIndex) {
@@ -461,71 +525,115 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		[data, t],
 	);
 
-	const renderRowDetails = useCallback((row: FinancialAssetRow) => {
-		const historicalRows = buildHistoricalRows(row);
-		const dateFormatter = new Intl.DateTimeFormat(locale, {
-			year: "numeric",
-			month: "2-digit",
-			day: "2-digit",
-		});
-		return (
-			<div className="space-y-3">
-				<div>
-					<div className="font-medium">{t("table.details.isin")}</div>
-					<div className="text-sm">{row.isin || t("common.na")}</div>
-				</div>
-				<div>
-					<div className="font-medium">{t("table.details.name")}</div>
-					<div className="text-sm">{row.name || t("common.na")}</div>
-				</div>
-				<div>
-					<div className="font-medium mb-2">{t("table.details.priceHistory")}</div>
-					{historicalRows.length === 0 ? (
-						<div className="text-sm">{t("table.details.noHistoricalData")}</div>
-					) : (
-						<div className="space-y-2">
-							{historicalRows.map((entry) => (
-								<div key={entry.dateKey} className="rounded border p-2 text-sm">
-									<div>{t("table.details.date")}: {dateFormatter.format(fromDateKey(entry.dateKey))}</div>
-									<div>
-										{t("table.details.price")}: {formatNumber(entry.price, locale, {
-											minimumFractionDigits: 3,
-											maximumFractionDigits: 3,
-										})}
-									</div>
-									<div>
-										{t("table.details.grossYield")}: {formatPercent(entry.annualYieldGrossToday, locale, {
-											minimumFractionDigits: 2,
-											maximumFractionDigits: 2,
-										})}
-									</div>
-									<div>
-										{t("table.details.netYield")}: {formatPercent(entry.annualYieldNetToday, locale, {
-											minimumFractionDigits: 2,
-											maximumFractionDigits: 2,
-										})}
-									</div>
-									<div>
-										{t("table.details.marketValue")}: {formatCurrency(entry.totalValueToday, locale, {
-											minimumFractionDigits: 2,
-											maximumFractionDigits: 2,
-										})}
-									</div>
-									<div>
-										{t("table.details.difference")}: {formatCurrency(entry.totalValueDifference, locale, {
-											minimumFractionDigits: 2,
-											maximumFractionDigits: 2,
-											signDisplay: "exceptZero",
-										})}
-									</div>
-								</div>
-							))}
+	const renderRowDetails = useCallback(
+		(row: FinancialAssetRow) => {
+			const historicalRows = buildHistoricalRows(row);
+			const dateFormatter = new Intl.DateTimeFormat(locale, {
+				year: "numeric",
+				month: "2-digit",
+				day: "2-digit",
+			});
+			return (
+				<div className="space-y-3">
+					<div>
+						<div className="font-medium">
+							{t("table.details.isin")}
 						</div>
-					)}
+						<div className="text-sm">
+							{row.isin || t("common.na")}
+						</div>
+					</div>
+					<div>
+						<div className="font-medium">
+							{t("table.details.name")}
+						</div>
+						<div className="text-sm">
+							{row.name || t("common.na")}
+						</div>
+					</div>
+					<div>
+						<div className="font-medium mb-2">
+							{t("table.details.priceHistory")}
+						</div>
+						{historicalRows.length === 0 ? (
+							<div className="text-sm">
+								{t("table.details.noHistoricalData")}
+							</div>
+						) : (
+							<div className="space-y-2">
+								{historicalRows.map((entry) => (
+									<div
+										key={entry.dateKey}
+										className="rounded border p-2 text-sm"
+									>
+										<div>
+											{t("table.details.date")}:{" "}
+											{dateFormatter.format(
+												fromDateKey(entry.dateKey),
+											)}
+										</div>
+										<div>
+											{t("table.details.price")}:{" "}
+											{formatNumber(entry.price, locale, {
+												minimumFractionDigits: 3,
+												maximumFractionDigits: 3,
+											})}
+										</div>
+										<div>
+											{t("table.details.grossYield")}:{" "}
+											{formatPercent(
+												entry.annualYieldGrossToday,
+												locale,
+												{
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												},
+											)}
+										</div>
+										<div>
+											{t("table.details.netYield")}:{" "}
+											{formatPercent(
+												entry.annualYieldNetToday,
+												locale,
+												{
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												},
+											)}
+										</div>
+										<div>
+											{t("table.details.marketValue")}:{" "}
+											{formatCurrency(
+												entry.totalValueToday,
+												locale,
+												{
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												},
+											)}
+										</div>
+										<div>
+											{t("table.details.difference")}:{" "}
+											{formatCurrency(
+												entry.totalValueDifference,
+												locale,
+												{
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+													signDisplay: "exceptZero",
+												},
+											)}
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
 				</div>
-			</div>
-		);
-	}, [locale, t]);
+			);
+		},
+		[locale, t],
+	);
 
 	const tableMeta = useMemo(
 		() => ({

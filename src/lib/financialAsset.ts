@@ -33,7 +33,7 @@ export class FinancialAsset {
 	/** Internal storage for coupon cashflows only */
 	private _couponCashflows: Cashflow[];
 
-	private static _FAKE_DELTA: number = 0.0;	// TODO add 0.05
+	private static _FAKE_DELTA: number = 0.0; // TODO add 0.05
 
 	/**
 	 * Creates a new Bond instance
@@ -56,8 +56,12 @@ export class FinancialAsset {
 		this.settlementPrice = normalizeNumber(settlementPrice);
 		this.redemptionPrice = normalizeNumber(redemptionPrice);
 		this.yearlyFrequency = normalizeNumber(yearlyFrequency);
-		this.capitalGainTaxPerc = capitalGainTaxPerc ? normalizeNumber(capitalGainTaxPerc) : 0;
-		this.issuingDate = issuingDate ? new Date(issuingDate) : new Date(this.settlementDate);
+		this.capitalGainTaxPerc = capitalGainTaxPerc
+			? normalizeNumber(capitalGainTaxPerc)
+			: 0;
+		this.issuingDate = issuingDate
+			? new Date(issuingDate)
+			: new Date(this.settlementDate);
 
 		// console.log("Constructing:", this.dict);
 		// Initialize coupon cashflows
@@ -68,14 +72,15 @@ export class FinancialAsset {
 	 * Get the bond's coupon cashflows
 	 */
 	get couponCashflows(): Cashflow[] {
-		let cashflows = structuredClone(this._couponCashflows);	// Deep copy using structuredClone
-		const jestWorkerId = (globalThis as { process?: { env?: { JEST_WORKER_ID?: string } } })
-			.process?.env?.JEST_WORKER_ID;
+		let cashflows = structuredClone(this._couponCashflows); // Deep copy using structuredClone
+		const jestWorkerId = (
+			globalThis as { process?: { env?: { JEST_WORKER_ID?: string } } }
+		).process?.env?.JEST_WORKER_ID;
 		if (jestWorkerId !== undefined) {
 			// If running in Jest, fix Date copy by creating new Date objects
-			cashflows = cashflows.map(cashflow => ({
+			cashflows = cashflows.map((cashflow) => ({
 				amount: cashflow.amount,
-				date: new Date(cashflow.date)
+				date: new Date(cashflow.date),
 			}));
 		}
 		return cashflows;
@@ -110,11 +115,18 @@ export class FinancialAsset {
 	/**
 	 * Calculates the accrued interest based on days since last coupon payment
 	 */
-	calculateAccruedInterest(referenceDate: Date, lastCouponDate: Date): number {
+	calculateAccruedInterest(
+		referenceDate: Date,
+		lastCouponDate: Date,
+	): number {
 		const couponRate = this.couponRatePerc / 100;
-		const daysSincePreviousCoupon = FinancialAsset.daysBetween(lastCouponDate, referenceDate);
+		const daysSincePreviousCoupon = FinancialAsset.daysBetween(
+			lastCouponDate,
+			referenceDate,
+		);
 		// console.log(`Days since previous coupon: ${daysSincePreviousCoupon}`);
-		const accruedInterestAmount: number = couponRate * 100 * (daysSincePreviousCoupon / 365);
+		const accruedInterestAmount: number =
+			couponRate * 100 * (daysSincePreviousCoupon / 365);
 		// console.log(`Accrued interest: ${accruedInterestAmount}`);
 		return accruedInterestAmount;
 	}
@@ -124,7 +136,7 @@ export class FinancialAsset {
 	 */
 	findLastCouponDate(referenceDate: Date): Date {
 		const pastCashflows = this._couponCashflows
-			.filter(cashflow => cashflow.date <= referenceDate)
+			.filter((cashflow) => cashflow.date <= referenceDate)
 			.sort((a, b) => b.date.getTime() - a.date.getTime());
 
 		if (pastCashflows.length > 0) {
@@ -133,8 +145,10 @@ export class FinancialAsset {
 		} else {
 			// If no coupon date is found before reference date, calculate the first coupon date
 			// and go backwards one period
-			const nextCouponDate = this._couponCashflows.length > 0 ?
-				this._couponCashflows[0].date : this.maturityDate;
+			const nextCouponDate =
+				this._couponCashflows.length > 0
+					? this._couponCashflows[0].date
+					: this.maturityDate;
 			const result = new Date(nextCouponDate);
 			result.setMonth(result.getMonth() - 12 / this.yearlyFrequency);
 			// console.log(`Last coupon date: ${result}`);
@@ -155,19 +169,25 @@ export class FinancialAsset {
 
 		// Normalize inputs
 		const maturityDate = new Date(this.maturityDate);
-		const startDate = issuingDate ? new Date(issuingDate) : new Date(this.settlementDate);
+		const startDate = issuingDate
+			? new Date(issuingDate)
+			: new Date(this.settlementDate);
 
 		const couponRate = this.couponRatePerc / 100;
 
 		// Calculate coupon amount per period
-		const couponAmount = (this.redemptionPrice * couponRate) / this.yearlyFrequency;
+		const couponAmount =
+			(this.redemptionPrice * couponRate) / this.yearlyFrequency;
 		// console.log(`Coupon amount: ${couponAmount}`);
 
 		// Start from maturity and go backwards to find all the coupons until start date
 		const couponDate = new Date(maturityDate);
 		let addedOneBeforeStart = false;
 
-		while (couponDate >= startDate || (!issuingDate && !addedOneBeforeStart)) {
+		while (
+			couponDate >= startDate ||
+			(!issuingDate && !addedOneBeforeStart)
+		) {
 			cashflows.push({
 				amount: couponAmount,
 				date: new Date(couponDate), // Create a new Date object for each cashflow entry
@@ -178,7 +198,9 @@ export class FinancialAsset {
 				addedOneBeforeStart = true;
 			}
 
-			couponDate.setMonth(couponDate.getMonth() - 12 / this.yearlyFrequency);
+			couponDate.setMonth(
+				couponDate.getMonth() - 12 / this.yearlyFrequency,
+			);
 		}
 
 		// Sort cashflows by date (ascending)
@@ -193,39 +215,56 @@ export class FinancialAsset {
 	 * Converts bond details to cashflows for IRR calculation
 	 * Generates full IRR cashflows on demand using coupon cashflows
 	 */
-	toIrrCashflows(newRedemptionDate?: Date, newRedemptionPrice?: number, net: boolean = false): Cashflow[] {
+	toIrrCashflows(
+		newRedemptionDate?: Date,
+		newRedemptionPrice?: number,
+		net: boolean = false,
+	): Cashflow[] {
 		let cashflows = this.couponCashflows;
 
 		const capitalGainTax = net ? this.capitalGainTaxPerc / 100 : 0;
 
 		// Adjust coupon cashflows for capital gain tax
-		cashflows.forEach(cashflow => {
+		cashflows.forEach((cashflow) => {
 			const capitalGainTaxAmount = cashflow.amount * capitalGainTax;
 			cashflow.amount -= capitalGainTaxAmount;
 		});
 
 		// Calculate accrued interest at settlement
-		const couponDateBeforeSettlement = this.findLastCouponDate(this.settlementDate);
+		const couponDateBeforeSettlement = this.findLastCouponDate(
+			this.settlementDate,
+		);
 		const accruedInterestAmountSettlement = this.calculateAccruedInterest(
 			this.settlementDate,
 			couponDateBeforeSettlement,
 		);
 
-		const redemptionDate = newRedemptionDate ? new Date(newRedemptionDate) : new Date(this.maturityDate);
+		const redemptionDate = newRedemptionDate
+			? new Date(newRedemptionDate)
+			: new Date(this.maturityDate);
 		redemptionDate.setHours(0, 0, 0, 0);
-		const redemptionPrice = newRedemptionPrice ? normalizeNumber(newRedemptionPrice) : this.redemptionPrice;
+		const redemptionPrice = newRedemptionPrice
+			? normalizeNumber(newRedemptionPrice)
+			: this.redemptionPrice;
 
-		const couponDateBeforeRedemption = this.findLastCouponDate(redemptionDate);
+		const couponDateBeforeRedemption =
+			this.findLastCouponDate(redemptionDate);
 		const accruedInterestAmountRedemption = this.calculateAccruedInterest(
 			redemptionDate,
 			couponDateBeforeRedemption,
 		);
 
 		// Add redemption value to the last coupon payment (typically at maturity) (does not take into account accruedInterestAmountSettlement)
-		const capitalGainTaxAmount = Math.max(0,(redemptionPrice - this.settlementPrice)) * capitalGainTax;
+		const capitalGainTaxAmount =
+			Math.max(0, redemptionPrice - this.settlementPrice) *
+			capitalGainTax;
 
 		// Filter and keep all cashflows after settlementDate and before redemptionDate
-		cashflows = cashflows.filter(cashflow => cashflow.date > this.settlementDate && cashflow.date <= redemptionDate);
+		cashflows = cashflows.filter(
+			(cashflow) =>
+				cashflow.date > this.settlementDate &&
+				cashflow.date <= redemptionDate,
+		);
 
 		// Add settlement cashflow (negative as it's an outflow)
 		cashflows.unshift({
@@ -235,29 +274,48 @@ export class FinancialAsset {
 
 		// Add redemption cashflow (positive as it's an inflow)
 		cashflows.push({
-			amount: redemptionPrice + accruedInterestAmountRedemption - capitalGainTaxAmount,
+			amount:
+				redemptionPrice +
+				accruedInterestAmountRedemption -
+				capitalGainTaxAmount,
 			date: new Date(redemptionDate),
 		});
 
 		return cashflows;
 	}
 
-	toIrrCashflowsNet(newRedemptionDate?: Date, newRedemptionPrice?: number): Cashflow[] {
+	toIrrCashflowsNet(
+		newRedemptionDate?: Date,
+		newRedemptionPrice?: number,
+	): Cashflow[] {
 		return this.toIrrCashflows(newRedemptionDate, newRedemptionPrice, true);
 	}
 
 	/**
 	 * Computes the yield
 	 */
-	computeYield(newRedemptionDate?: Date, newRedemptionPrice?: number): number {
-		const irrCashflows = this.toIrrCashflows(newRedemptionDate, newRedemptionPrice);
+	computeYield(
+		newRedemptionDate?: Date,
+		newRedemptionPrice?: number,
+	): number {
+		const irrCashflows = this.toIrrCashflows(
+			newRedemptionDate,
+			newRedemptionPrice,
+		);
 		return FinancialAsset.computeYieldFromCashflows(irrCashflows);
 	}
 	/**
 	 * Computes the net yield after taxes
 	 */
-	computeYieldNet(newRedemptionDate?: Date, newRedemptionPrice?: number): number {
-		const irrCashflows = this.toIrrCashflows(newRedemptionDate, newRedemptionPrice, true);
+	computeYieldNet(
+		newRedemptionDate?: Date,
+		newRedemptionPrice?: number,
+	): number {
+		const irrCashflows = this.toIrrCashflows(
+			newRedemptionDate,
+			newRedemptionPrice,
+			true,
+		);
 		return FinancialAsset.computeYieldFromCashflows(irrCashflows);
 	}
 
@@ -265,7 +323,10 @@ export class FinancialAsset {
 	 * Computes the yield given a set of cashflows
 	 */
 	static computeYieldFromCashflows(cashflows: Cashflow[]): number {
-		return convertRate(xirr(cashflows).rate, RateInterval.Year) * 100 + FinancialAsset._FAKE_DELTA;
+		return (
+			convertRate(xirr(cashflows).rate, RateInterval.Year) * 100 +
+			FinancialAsset._FAKE_DELTA
+		);
 	}
 
 	// computeWebcarrotYieldTest(newRedemptionDate?: Date, newRedemptionPrice?: number): number {

@@ -28,7 +28,10 @@ type FinancialAssetBaseFromModel = Pick<
 	| "priceByDate"
 >;
 
-export type FinancialAssetBaseRow = Omit<FinancialAssetBaseFromModel, "capitalGainTaxPerc"> & {
+export type FinancialAssetBaseRow = Omit<
+	FinancialAssetBaseFromModel,
+	"capitalGainTaxPerc"
+> & {
 	capitalGainTaxPerc: number | string;
 	name: string;
 	totalValueNominal?: number;
@@ -47,58 +50,70 @@ export type FinancialAssetRowCalculated = {
 	_rowId?: string; // Unique identifier for this row instance
 };
 
-export type FinancialAssetRow = FinancialAssetBaseRow & FinancialAssetRowCalculated;
+export type FinancialAssetRow = FinancialAssetBaseRow &
+	FinancialAssetRowCalculated;
 
 // Validation function for numeric inputs
 const validateNumericInput = (e: KeyboardEvent<HTMLInputElement>) => {
-  // Allow: backspace, delete, tab, escape, enter, arrows
-  if ([
-    'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
-    'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-    'Home', 'End'
-  ].includes(e.key)) {
-    return;
-  }
-  // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-  if ((e.ctrlKey || e.metaKey) &&
-    ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) {
-    return;
-  }
+	// Allow: backspace, delete, tab, escape, enter, arrows
+	if (
+		[
+			"Backspace",
+			"Delete",
+			"Tab",
+			"Escape",
+			"Enter",
+			"ArrowLeft",
+			"ArrowRight",
+			"ArrowUp",
+			"ArrowDown",
+			"Home",
+			"End",
+		].includes(e.key)
+	) {
+		return;
+	}
+	// Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+	if (
+		(e.ctrlKey || e.metaKey) &&
+		["a", "c", "v", "x"].includes(e.key.toLowerCase())
+	) {
+		return;
+	}
 
-  // Substitute comma with dot
-  if (e.key === ',') {
-    e.preventDefault();
-    const input = e.target as HTMLInputElement;
-    const start = input.selectionStart || 0;
-    const end = input.selectionEnd || 0;
+	// Substitute comma with dot
+	if (e.key === ",") {
+		e.preventDefault();
+		const input = e.target as HTMLInputElement;
+		const start = input.selectionStart || 0;
+		const end = input.selectionEnd || 0;
 
-    // Combine the value before and after the cursor with a dot
-    const newValue =
-      input.value.substring(0, start) +
-      '.' +
-      input.value.substring(end);
+		// Combine the value before and after the cursor with a dot
+		const newValue =
+			input.value.substring(0, start) + "." + input.value.substring(end);
 
-    input.value = newValue;
+		input.value = newValue;
 
-    // Reset the cursor position after the dot
-    input.setSelectionRange(start + 1, start + 1);
+		// Reset the cursor position after the dot
+		input.setSelectionRange(start + 1, start + 1);
 
-    return;
-  }
+		return;
+	}
 
-  // Allow: numbers and period
-  if (/^[0-9.]$/.test(e.key)) {
-    return;
-  }
-  // Block everything else
-  e.preventDefault();
+	// Allow: numbers and period
+	if (/^[0-9.]$/.test(e.key)) {
+		return;
+	}
+	// Block everything else
+	e.preventDefault();
 };
 
 // Helper to check if a value is a valid number
 const isValidNumber = (value: unknown): boolean => {
-	if (value === undefined || value === null || value === '') return true;
+	if (value === undefined || value === null || value === "") return true;
 	if (typeof value === "number") return Number.isFinite(value);
-	if (typeof value === "string") return value.trim() === "" || Number.isFinite(normalizeNumber(value));
+	if (typeof value === "string")
+		return value.trim() === "" || Number.isFinite(normalizeNumber(value));
 	return false;
 };
 
@@ -114,7 +129,11 @@ const createTaxOptions = (locale: string) => {
 	}));
 };
 
-const createEditableNumericCell = (suffix: string, className: string, locale: string) => {
+const createEditableNumericCell = (
+	suffix: string,
+	className: string,
+	locale: string,
+) => {
 	return (props: CellContext<FinancialAssetRow, unknown>) => {
 		const value = props.getValue();
 		const isValid = isValidNumber(value);
@@ -135,7 +154,10 @@ const renderYieldCell = (
 	locale: string,
 	options?: { italic?: boolean; hideWhenZeroTax?: boolean },
 ) => {
-	if (options?.hideWhenZeroTax && props.row.original.capitalGainTaxPerc == 0) {
+	if (
+		options?.hideWhenZeroTax &&
+		props.row.original.capitalGainTaxPerc == 0
+	) {
 		return null;
 	}
 
@@ -143,9 +165,9 @@ const renderYieldCell = (
 	const hasValue = typeof value === "number" && Number.isFinite(value);
 	const formattedValue = hasValue
 		? formatPercent(value, locale, {
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		})
+				minimumFractionDigits: 2,
+				maximumFractionDigits: 2,
+			})
 		: "";
 
 	return (
@@ -155,14 +177,17 @@ const renderYieldCell = (
 	);
 };
 
-const renderEuroValueCell = (props: CellContext<FinancialAssetRow, number>, locale: string) => {
+const renderEuroValueCell = (
+	props: CellContext<FinancialAssetRow, number>,
+	locale: string,
+) => {
 	const value = props.getValue();
 	const hasValue = typeof value === "number" && Number.isFinite(value);
 	const formattedValue = hasValue
 		? formatCurrency(value, locale, {
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		})
+				minimumFractionDigits: 2,
+				maximumFractionDigits: 2,
+			})
 		: "";
 
 	return (
@@ -187,7 +212,10 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 					const isValid = value?.length === 12;
 					return (
 						<EditableTextCell
-							{...(props as CellContext<FinancialAssetRow, string>)}
+							{...(props as CellContext<
+								FinancialAssetRow,
+								string
+							>)}
 							className={`w-[15ch] min-w-[15ch] max-w-[15ch] ${!isValid && value ? "border-red-500 bg-red-500/10" : ""}`}
 							placeholder={t("table.placeholders.isin")}
 						/>
@@ -200,7 +228,10 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 				cell: (props) => {
 					return (
 						<EditableTextCell
-							{...(props as CellContext<FinancialAssetRow, string>)}
+							{...(props as CellContext<
+								FinancialAssetRow,
+								string
+							>)}
 							className={"w-[24ch] min-w-[24ch]"}
 						/>
 					);
@@ -225,7 +256,11 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 				accessorKey: "couponRatePerc",
 				header: t("table.headers.coupon"),
 				meta: { printable: false },
-				cell: createEditableNumericCell("%", "min-w-[5em] max-w-[6em]", locale),
+				cell: createEditableNumericCell(
+					"%",
+					"min-w-[5em] max-w-[6em]",
+					locale,
+				),
 			},
 			{
 				accessorKey: "capitalGainTaxPerc",
@@ -252,12 +287,20 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 			{
 				accessorKey: "settlementPrice",
 				header: t("table.headers.settlementPrice"),
-				cell: createEditableNumericCell("€", "min-w-[6em] max-w-[8em]", locale),
+				cell: createEditableNumericCell(
+					"€",
+					"min-w-[6em] max-w-[8em]",
+					locale,
+				),
 			},
 			{
 				accessorKey: "redemptionPrice",
 				header: t("table.headers.redemption"),
-				cell: createEditableNumericCell("€", "min-w-[6em] max-w-[8em]", locale),
+				cell: createEditableNumericCell(
+					"€",
+					"min-w-[6em] max-w-[8em]",
+					locale,
+				),
 			},
 			{
 				header: t("table.headers.yield"),
@@ -265,15 +308,23 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 					{
 						accessorKey: "annualYieldGross",
 						header: t("table.headers.gross"),
-						cell: (props) => renderYieldCell(props as CellContext<FinancialAssetRow, number>, locale),
+						cell: (props) =>
+							renderYieldCell(
+								props as CellContext<FinancialAssetRow, number>,
+								locale,
+							),
 					},
 					{
 						accessorKey: "annualYieldNet",
 						header: t("table.headers.net"),
 						cell: (props) =>
-							renderYieldCell(props as CellContext<FinancialAssetRow, number>, locale, {
-								hideWhenZeroTax: true,
-							}),
+							renderYieldCell(
+								props as CellContext<FinancialAssetRow, number>,
+								locale,
+								{
+									hideWhenZeroTax: true,
+								},
+							),
 					},
 				],
 			},
@@ -283,24 +334,36 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 					{
 						accessorKey: "todayPrice",
 						header: t("table.headers.priceToday"),
-						cell: createEditableNumericCell("€", "min-w-[6em] max-w-[8em]", locale),
+						cell: createEditableNumericCell(
+							"€",
+							"min-w-[6em] max-w-[8em]",
+							locale,
+						),
 					},
 					{
 						accessorKey: "annualYieldGrossToday",
 						header: t("table.headers.gross"),
 						cell: (props) =>
-							renderYieldCell(props as CellContext<FinancialAssetRow, number>, locale, {
-								italic: true,
-							}),
+							renderYieldCell(
+								props as CellContext<FinancialAssetRow, number>,
+								locale,
+								{
+									italic: true,
+								},
+							),
 					},
 					{
 						accessorKey: "annualYieldNetToday",
 						header: t("table.headers.net"),
 						cell: (props) =>
-							renderYieldCell(props as CellContext<FinancialAssetRow, number>, locale, {
-								italic: true,
-								hideWhenZeroTax: true,
-							}),
+							renderYieldCell(
+								props as CellContext<FinancialAssetRow, number>,
+								locale,
+								{
+									italic: true,
+									hideWhenZeroTax: true,
+								},
+							),
 					},
 				],
 			},
@@ -310,35 +373,61 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 					{
 						accessorKey: "totalValueSettlement",
 						header: t("table.headers.purchase"),
-						cell: (props) => renderEuroValueCell(props as CellContext<FinancialAssetRow, number>, locale),
+						cell: (props) =>
+							renderEuroValueCell(
+								props as CellContext<FinancialAssetRow, number>,
+								locale,
+							),
 					},
 					{
 						accessorKey: "totalValueToday",
 						header: t("table.headers.today"),
-						cell: (props) => renderEuroValueCell(props as CellContext<FinancialAssetRow, number>, locale),
+						cell: (props) =>
+							renderEuroValueCell(
+								props as CellContext<FinancialAssetRow, number>,
+								locale,
+							),
 					},
 					{
 						accessorKey: "totalValueDifference",
 						header: t("table.headers.difference"),
 						cell: (props) => {
-							const value = (props as CellContext<FinancialAssetRow, number>).getValue();
-							const hasValue = typeof value === "number" && Number.isFinite(value);
+							const value = (
+								props as CellContext<FinancialAssetRow, number>
+							).getValue();
+							const hasValue =
+								typeof value === "number" &&
+								Number.isFinite(value);
 							const isPositive = hasValue && value > 0;
 							const isNegative = hasValue && value < 0;
-							const textColorClass = isPositive ? "text-green-600" : isNegative ? "text-red-600" : "";
+							const textColorClass = isPositive
+								? "text-green-600"
+								: isNegative
+									? "text-red-600"
+									: "";
 							const formattedValue = hasValue
 								? formatCurrency(Math.abs(value), locale, {
-									minimumFractionDigits: 2,
-									maximumFractionDigits: 2,
-								})
+										minimumFractionDigits: 2,
+										maximumFractionDigits: 2,
+									})
 								: "";
 
 							return (
-								<span className={`flex font-bold ${textColorClass}`}>
+								<span
+									className={`flex font-bold ${textColorClass}`}
+								>
 									{hasValue && (
-										<span>{isPositive ? "+" : isNegative ? "-" : ""}</span>
+										<span>
+											{isPositive
+												? "+"
+												: isNegative
+													? "-"
+													: ""}
+										</span>
 									)}
-									<span className="mr-auto">{formattedValue}</span>
+									<span className="mr-auto">
+										{formattedValue}
+									</span>
 								</span>
 							);
 						},

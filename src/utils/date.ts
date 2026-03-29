@@ -20,7 +20,7 @@ export function isDateToday(date: Date | null | undefined): boolean {
 		date.getMonth() === today.getMonth() &&
 		date.getDate() === today.getDate()
 	);
-};
+}
 
 export function toDateKey(date: Date | string): string {
 	const value = new Date(date);

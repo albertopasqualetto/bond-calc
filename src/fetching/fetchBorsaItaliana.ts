@@ -33,14 +33,14 @@ export interface BorsaItalianaData {
  */
 function convertCouponFrequency(frequency: string): number {
 	const frequencyMap: Record<string, number> = {
-		"Annuale": 1,
-		"Semestrale": 2,
-		"Trimestrale": 4,
-		"Mensile": 12,
-		"Bimestrale": 6,
-		"Quadrimestrale": 3,
-		"Giornaliero": 365,
-		"Zero Coupon": 0	// Tassazione zero coupon?
+		Annuale: 1,
+		Semestrale: 2,
+		Trimestrale: 4,
+		Mensile: 12,
+		Bimestrale: 6,
+		Quadrimestrale: 3,
+		Giornaliero: 365,
+		"Zero Coupon": 0, // Tassazione zero coupon?
 	};
 
 	// Convert to lowercase, remove extra spaces, and find in the map
@@ -94,23 +94,34 @@ export async function fetchBorsaItalianaData(
 		const rawResult: unknown = await response.json();
 		const result = rawResult as BorsaItalianaResponse;
 		if (!result.success) {
-			throw new Error(
-				`API request not successful: ${result.success}`,
-			);
+			throw new Error(`API request not successful: ${result.success}`);
 		}
 
 		const data = result.data;
 		data.price.last = parseFloat(String(data.price.last).replace(",", "."));
-		data.price.perc = parseFloat(String(data.price.perc).replace(",", ".").replace("%", "").trim());
-		data.info.couponFrequency = convertCouponFrequency(String(data.info.couponFrequency));
+		data.price.perc = parseFloat(
+			String(data.price.perc).replace(",", ".").replace("%", "").trim(),
+		);
+		data.info.couponFrequency = convertCouponFrequency(
+			String(data.info.couponFrequency),
+		);
 		data.info.maturityDate = new Date(data.info.maturityDate);
 		data.info.issuingDate = new Date(data.info.issuingDate);
-		if (data.info.maturityDate < data.info.issuingDate) { // Adjust incorrect parsing of YY formatted date
-			data.info.maturityDate.setFullYear(data.info.maturityDate.getFullYear() + 100);
+		if (data.info.maturityDate < data.info.issuingDate) {
+			// Adjust incorrect parsing of YY formatted date
+			data.info.maturityDate.setFullYear(
+				data.info.maturityDate.getFullYear() + 100,
+			);
 		}
-		data.info.periodicCouponRatePerc = parseFloat(String(data.info.periodicCouponRatePerc).replace(",", "."));
-		data.info.yearlyCouponRatePerc = parseFloat(String(data.info.yearlyCouponRatePerc).replace(",", "."));
-		data.info.couponRatePerc = !isNaN(data.info.periodicCouponRatePerc) ? data.info.periodicCouponRatePerc * data.info.couponFrequency : data.info.yearlyCouponRatePerc;
+		data.info.periodicCouponRatePerc = parseFloat(
+			String(data.info.periodicCouponRatePerc).replace(",", "."),
+		);
+		data.info.yearlyCouponRatePerc = parseFloat(
+			String(data.info.yearlyCouponRatePerc).replace(",", "."),
+		);
+		data.info.couponRatePerc = !isNaN(data.info.periodicCouponRatePerc)
+			? data.info.periodicCouponRatePerc * data.info.couponFrequency
+			: data.info.yearlyCouponRatePerc;
 
 		console.log(data);
 		return data;

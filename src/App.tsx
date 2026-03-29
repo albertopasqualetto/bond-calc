@@ -1,16 +1,18 @@
-import { useState, useRef, useEffect } from "react"
-import YieldsTable from "./table/table"
-import { Button } from "@/components/ui/button"
-import { PenLine, Check } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { useTranslation } from "react-i18next"
-import "./global.css"
-import "./print.css"
+import { useState, useRef, useEffect } from "react";
+import YieldsTable from "./table/table";
+import { Button } from "@/components/ui/button";
+import { PenLine, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useTranslation } from "react-i18next";
+import "./global.css";
+import "./print.css";
 
 export default function App() {
 	const { t } = useTranslation();
-	const [darkMode, setDarkMode] = useState(() => 
-		window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+	const [darkMode, setDarkMode] = useState(
+		() =>
+			window.matchMedia &&
+			window.matchMedia("(prefers-color-scheme: dark)").matches,
 	);
 
 	useEffect(() => {
@@ -24,7 +26,7 @@ export default function App() {
 		}
 
 		// Listen for changes in system preference
-		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 		const handleChange = (e: MediaQueryListEvent) => {
 			setDarkMode(e.matches);
 			if (e.matches) {
@@ -36,8 +38,8 @@ export default function App() {
 			}
 		};
 
-		mediaQuery.addEventListener('change', handleChange);
-		return () => mediaQuery.removeEventListener('change', handleChange);
+		mediaQuery.addEventListener("change", handleChange);
+		return () => mediaQuery.removeEventListener("change", handleChange);
 	}, []);
 
 	const [name, setName] = useState("");
@@ -59,7 +61,7 @@ export default function App() {
 			}
 		}
 		setIsEditing(!isEditing);
-	}
+	};
 
 	return (
 		<>
@@ -97,5 +99,5 @@ export default function App() {
 				onNameChange={setName} // Pass the setName function to update name when importing
 			/>
 		</>
-	)
+	);
 }
