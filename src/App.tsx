@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import YieldsTable from "./table/table";
+import YieldsTable from "@/table/table";
 import { Button } from "@/components/ui/button";
 import { PenLine, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";

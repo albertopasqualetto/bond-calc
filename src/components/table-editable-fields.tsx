@@ -3,8 +3,17 @@
 import type { CellContext } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { JSX, useState, ComponentPropsWithoutRef, KeyboardEvent } from "react";
+import {
+	JSX,
+	Suspense,
+	lazy,
+	useState,
+	ComponentPropsWithoutRef,
+	KeyboardEvent,
+} from "react";
+import type { Locale } from "react-day-picker";
 import { useTranslation } from "react-i18next";
+import { getDateFnsLocaleByLanguage } from "@/i18n";
 import {
 	Select,
 	SelectTrigger,
@@ -12,7 +21,6 @@ import {
 	SelectContent,
 	SelectItem,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import {
 	Popover,
 	PopoverContent,
@@ -28,8 +36,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatNumber, normalizeNumber } from "@/utils/number";
 import { CalendarIcon } from "lucide-react";
-import { enUS } from "date-fns/locale";
-import * as dateFnsLocales from "date-fns/locale";
+
+const Calendar = lazy(() =>
+	import("@/components/ui/calendar").then((module) => ({
+		default: module.Calendar,
+	})),
+);
 
 type InputLikeProps = Omit<
 	ComponentPropsWithoutRef<typeof Input>,
@@ -137,61 +149,32 @@ const parseDateInputValue = (value: string): Date | undefined => {
 	return normalizeDate(parsedDate);
 };
 
-type CalendarLocale = NonNullable<
-	ComponentPropsWithoutRef<typeof Calendar>["locale"]
->;
-type CalendarLocaleWithCode = CalendarLocale & { code: string };
+type CalendarLocale = Partial<Locale>;
 
-const isCalendarLocale = (value: unknown): value is CalendarLocaleWithCode => {
-	if (typeof value !== "object" || value === null) {
-		return false;
-	}
-
-	return (
-		"code" in value &&
-		typeof (value as { code?: unknown }).code === "string"
-	);
-};
-
-const calendarLocales: CalendarLocaleWithCode[] = (
-	Object.values(dateFnsLocales) as unknown[]
-).filter(isCalendarLocale);
-
-const resolveCalendarLocale = (
-	locale: string | undefined,
-): ComponentPropsWithoutRef<typeof Calendar>["locale"] => {
+const getCalendarLocaleKeys = (locale: string | undefined): string[] => {
 	if (!locale) {
-		return enUS;
+		return ["en"];
 	}
 
 	const normalizedLocale = locale.replace("_", "-").toLowerCase();
-
-	const exactMatch = calendarLocales.find(
-		(candidate) => candidate.code?.toLowerCase() === normalizedLocale,
-	);
-	if (exactMatch) {
-		return exactMatch;
-	}
-
 	const baseLanguage = normalizedLocale.split("-")[0];
-	if (!baseLanguage) {
-		return enUS;
+
+	return Array.from(new Set([normalizedLocale, baseLanguage, "en"]));
+};
+
+const resolveCalendarLocale = (
+	locale: string | undefined,
+): CalendarLocale | undefined => {
+	const keys = getCalendarLocaleKeys(locale);
+
+	for (const key of keys) {
+		const loadedLocale = getDateFnsLocaleByLanguage(key);
+		if (loadedLocale) {
+			return loadedLocale as CalendarLocale;
+		}
 	}
 
-	const baseMatch = calendarLocales.find(
-		(candidate) => candidate.code?.toLowerCase() === baseLanguage,
-	);
-	if (baseMatch) {
-		return baseMatch;
-	}
-
-	const languageRegionFallback = calendarLocales.find(
-		(candidate) =>
-			candidate.code?.toLowerCase().startsWith(`${baseLanguage}-`) ??
-			false,
-	);
-
-	return languageRegionFallback ?? enUS;
+	return undefined;
 };
 
 const getFractionDigits = (value: string): number => {
@@ -466,24 +449,26 @@ const EditableDatePickerField = ({
 						alignOffset={-8}
 						sideOffset={10}
 					>
-						<Calendar
-							mode="single"
-							selected={selectedDate}
-							month={month}
-							onMonthChange={setMonth}
-							onSelect={(nextDate) => {
-								if (!nextDate) {
-									return;
-								}
+						<Suspense fallback={null}>
+							<Calendar
+								mode="single"
+								selected={selectedDate}
+								month={month}
+								onMonthChange={setMonth}
+								onSelect={(nextDate) => {
+									if (!nextDate) {
+										return;
+									}
 
-								commitDate(nextDate);
-								setOpen(false);
-							}}
-							captionLayout="dropdown"
-							startMonth={new Date(1970, 0)}
-							endMonth={new Date(2100, 11)}
-							locale={calendarLocale}
-						/>
+									commitDate(nextDate);
+									setOpen(false);
+								}}
+								captionLayout="dropdown"
+								startMonth={new Date(1970, 0)}
+								endMonth={new Date(2100, 11)}
+								locale={calendarLocale}
+							/>
+						</Suspense>
 					</PopoverContent>
 				</Popover>
 			</InputGroupAddon>

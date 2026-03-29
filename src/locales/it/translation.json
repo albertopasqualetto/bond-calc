@@ -5,9 +5,38 @@
 	"common": {
 		"na": "N/D",
 		"close": "Chiudi",
-		"jsonFile": "File JSON"
+		"jsonFile": "File JSON",
+		"today": "Oggi"
+	},
+	"financialAsset": {
+		"isin": "ISIN",
+		"name": "Nome",
+		"priceHistory": "Storico prezzi",
+		"noHistoricalData": "Nessun dato storico disponibile.",
+		"date": "Data",
+		"price": "Prezzo",
+		"grossYield": "Rendimento lordo",
+		"netYield": "Rendimento netto",
+		"marketValue": "Controvalore",
+		"difference": "Differenza",
+		"nominal": "Nominale",
+		"maturity": "Scadenza",
+		"coupon": "Cedola",
+		"taxation": "Tassazione",
+		"settlementDate": "Data PMC",
+		"settlementPrice": "PMC",
+		"redemption": "Rimborso",
+		"yield": "Rendimento",
+		"gross": "Lordo",
+		"net": "Netto",
+		"yieldSellingToday": "Rendimento vendendo oggi",
+		"priceToday": "Prezzo oggi",
+		"purchase": "Acquisto"
 	},
 	"table": {
+		"common": {
+			"notes": "Note"
+		},
 		"status": {
 			"loadingData": "Caricamento dati...",
 			"fetchFailed": "Recupero dati non riuscito"
@@ -27,39 +56,6 @@
 		},
 		"alerts": {
 			"invalidImport": "Importazione non riuscita. Assicurati che il file sia un export JSON valido."
-		},
-		"details": {
-			"isin": "ISIN",
-			"name": "Nome",
-			"priceHistory": "Storico prezzi",
-			"noHistoricalData": "Nessun dato storico disponibile.",
-			"date": "Data",
-			"price": "Prezzo",
-			"grossYield": "Rendimento lordo",
-			"netYield": "Rendimento netto",
-			"marketValue": "Controvalore",
-			"difference": "Differenza"
-		},
-		"headers": {
-			"isin": "ISIN",
-			"name": "Nome",
-			"nominal": "Nominale",
-			"maturity": "Scadenza",
-			"coupon": "Cedola",
-			"taxation": "Tassazione",
-			"settlementDate": "Data PMC",
-			"settlementPrice": "PMC",
-			"redemption": "Rimborso",
-			"yield": "Rendimento",
-			"gross": "Lordo",
-			"net": "Netto",
-			"yieldSellingToday": "Rendimento vendendo oggi",
-			"priceToday": "Prezzo oggi",
-			"countervalue": "Controvalore",
-			"purchase": "Acquisto",
-			"today": "Oggi",
-			"difference": "Differenza",
-			"notes": "Note"
 		},
 		"placeholders": {
 			"isin": "ISIN",

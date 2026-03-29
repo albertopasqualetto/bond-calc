@@ -206,7 +206,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 		() => [
 			{
 				accessorKey: "isin",
-				header: t("table.headers.isin"),
+				header: t("financialAsset.isin"),
 				cell: (props) => {
 					const value = props.getValue() as string;
 					const isValid = value?.length === 12;
@@ -224,7 +224,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 			},
 			{
 				accessorKey: "name",
-				header: t("table.headers.name"),
+				header: t("financialAsset.name"),
 				cell: (props) => {
 					return (
 						<EditableTextCell
@@ -239,12 +239,12 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 			},
 			{
 				accessorKey: "totalValueNominal",
-				header: t("table.headers.nominal"),
+				header: t("financialAsset.nominal"),
 				cell: createEditableNumericCell("€", "min-w-[11ch]", locale),
 			},
 			{
 				accessorKey: "maturityDate",
-				header: t("table.headers.maturity"),
+				header: t("financialAsset.maturity"),
 				meta: { printable: false },
 				cell: (props) => (
 					<EditableDatePickerCell
@@ -254,7 +254,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 			},
 			{
 				accessorKey: "couponRatePerc",
-				header: t("table.headers.coupon"),
+				header: t("financialAsset.coupon"),
 				meta: { printable: false },
 				cell: createEditableNumericCell(
 					"%",
@@ -264,7 +264,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 			},
 			{
 				accessorKey: "capitalGainTaxPerc",
-				header: t("table.headers.taxation"),
+				header: t("financialAsset.taxation"),
 				meta: { printable: false },
 				cell: (props) => (
 					<EditableSelectCell
@@ -277,7 +277,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 			},
 			{
 				accessorKey: "settlementDate",
-				header: t("table.headers.settlementDate"),
+				header: t("financialAsset.settlementDate"),
 				cell: (props) => (
 					<EditableDatePickerCell
 						{...(props as CellContext<FinancialAssetRow, Date>)}
@@ -286,7 +286,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 			},
 			{
 				accessorKey: "settlementPrice",
-				header: t("table.headers.settlementPrice"),
+				header: t("financialAsset.settlementPrice"),
 				cell: createEditableNumericCell(
 					"€",
 					"min-w-[6em] max-w-[8em]",
@@ -295,7 +295,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 			},
 			{
 				accessorKey: "redemptionPrice",
-				header: t("table.headers.redemption"),
+				header: t("financialAsset.redemption"),
 				cell: createEditableNumericCell(
 					"€",
 					"min-w-[6em] max-w-[8em]",
@@ -303,11 +303,11 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 				),
 			},
 			{
-				header: t("table.headers.yield"),
+				header: t("financialAsset.yield"),
 				columns: [
 					{
 						accessorKey: "annualYieldGross",
-						header: t("table.headers.gross"),
+						header: t("financialAsset.gross"),
 						cell: (props) =>
 							renderYieldCell(
 								props as CellContext<FinancialAssetRow, number>,
@@ -316,7 +316,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 					},
 					{
 						accessorKey: "annualYieldNet",
-						header: t("table.headers.net"),
+						header: t("financialAsset.net"),
 						cell: (props) =>
 							renderYieldCell(
 								props as CellContext<FinancialAssetRow, number>,
@@ -329,11 +329,11 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 				],
 			},
 			{
-				header: t("table.headers.yieldSellingToday"),
+				header: t("financialAsset.yieldSellingToday"),
 				columns: [
 					{
 						accessorKey: "todayPrice",
-						header: t("table.headers.priceToday"),
+						header: t("financialAsset.priceToday"),
 						cell: createEditableNumericCell(
 							"€",
 							"min-w-[6em] max-w-[8em]",
@@ -342,7 +342,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 					},
 					{
 						accessorKey: "annualYieldGrossToday",
-						header: t("table.headers.gross"),
+						header: t("financialAsset.gross"),
 						cell: (props) =>
 							renderYieldCell(
 								props as CellContext<FinancialAssetRow, number>,
@@ -354,7 +354,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 					},
 					{
 						accessorKey: "annualYieldNetToday",
-						header: t("table.headers.net"),
+						header: t("financialAsset.net"),
 						cell: (props) =>
 							renderYieldCell(
 								props as CellContext<FinancialAssetRow, number>,
@@ -368,11 +368,11 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 				],
 			},
 			{
-				header: t("table.headers.countervalue"),
+				header: t("financialAsset.marketValue"),
 				columns: [
 					{
 						accessorKey: "totalValueSettlement",
-						header: t("table.headers.purchase"),
+						header: t("financialAsset.purchase"),
 						cell: (props) =>
 							renderEuroValueCell(
 								props as CellContext<FinancialAssetRow, number>,
@@ -381,7 +381,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 					},
 					{
 						accessorKey: "totalValueToday",
-						header: t("table.headers.today"),
+						header: t("common.today"),
 						cell: (props) =>
 							renderEuroValueCell(
 								props as CellContext<FinancialAssetRow, number>,
@@ -390,7 +390,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 					},
 					{
 						accessorKey: "totalValueDifference",
-						header: t("table.headers.difference"),
+						header: t("financialAsset.difference"),
 						cell: (props) => {
 							const value = (
 								props as CellContext<FinancialAssetRow, number>
@@ -436,7 +436,7 @@ export const useFinancialAssetColumns = (): ColumnDef<FinancialAssetRow>[] => {
 			},
 			{
 				accessorKey: "notes",
-				header: t("table.headers.notes"),
+				header: t("table.common.notes"),
 				cell: (props) => (
 					<EditableTextCell
 						{...(props as CellContext<FinancialAssetRow, string>)}

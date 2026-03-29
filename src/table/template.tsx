@@ -17,6 +17,7 @@ import {
 	ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { FINANCIAL_ASSETS_LOCAL_STORAGE_KEY } from "../constants";
 
 import {
 	Table,
@@ -250,7 +251,7 @@ function DataTableInner<TData, TValue>({
 	onDeleteRow,
 	onNameChange,
 	onDataChange,
-	localStorageKey = "financial-assets-data",
+	localStorageKey = FINANCIAL_ASSETS_LOCAL_STORAGE_KEY,
 	meta,
 	defaultData = [],
 	serializeRow,

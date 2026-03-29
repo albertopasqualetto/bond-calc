@@ -11,6 +11,42 @@ export default defineConfig({
 			"@": path.resolve(__dirname, "./src"),
 		},
 	},
+	build: {
+		rolldownOptions: {
+			output: {
+				codeSplitting: {
+					minSize: 20_000,
+					groups: [
+						{
+							name: "react-vendor",
+							test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+							priority: 30,
+						},
+						{
+							name: "table-vendor",
+							test: /node_modules[\\/]@tanstack[\\/]/,
+							priority: 25,
+						},
+						{
+							name: "i18n-vendor",
+							test: /node_modules[\\/](i18next|react-i18next|i18next-browser-languagedetector)[\\/]/,
+							priority: 20,
+						},
+						{
+							name: "ui-vendor",
+							test: /node_modules[\\/](@base-ui|lucide-react|react-day-picker|date-fns)[\\/]/,
+							priority: 15,
+						},
+						{
+							name: "vendor",
+							test: /node_modules/,
+							priority: 10,
+						},
+					],
+				},
+			},
+		},
+	},
 	// define: {
 	//   'process.env': process.env  // TODO: check if this works after build
 	// },
@@ -24,6 +60,5 @@ export default defineConfig({
 		strictPort: true,
 		host: true,
 		origin: "http://0.0.0.0:8080",
-		allowedHosts: true, // TODO change
 	},
 });
