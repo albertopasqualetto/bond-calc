@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { FinancialAssetRow, FinancialAssetRowCalculated, columns } from "./columns";
+import { useTranslation } from "react-i18next";
+import { FinancialAssetRow, FinancialAssetRowCalculated, useFinancialAssetColumns } from "./columns";
 import { DataTable } from "./template";
 import { fromDateKey, isDateToday, toDateKey } from "@/utils/date";
-import { normalizeNumber } from "@/utils/number";
+import { formatCurrency, formatNumber, formatPercent, normalizeNumber } from "@/utils/number";
 import { fetchBorsaItalianaData } from "@/fetching/fetchBorsaItaliana";
 import { FinancialAsset } from "@/lib/financialAsset";
 
@@ -232,6 +233,9 @@ interface YieldsTableProps {
 }
 
 export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
+	const { t, i18n } = useTranslation();
+	const locale = i18n.resolvedLanguage || "en";
+	const columns = useFinancialAssetColumns();
 	const [data, setData] = useState<FinancialAssetRow[]>([]);
 	const [deleteConfirmState, setDeleteConfirmState] = useState({
 		isConfirming: false,
@@ -404,7 +408,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 				}
 				return {
 					...currentRow,
-					name: "Loading data...",
+					name: t("table.status.loadingData"),
 				};
 			}));
 
@@ -448,41 +452,72 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 							}
 							return {
 								...currentRow,
-								name: "Data fetch failed",
+								name: t("table.status.fetchFailed"),
 							};
 						});
 					});
 				});
 		},
-		[data],
+		[data, t],
 	);
 
 	const renderRowDetails = useCallback((row: FinancialAssetRow) => {
 		const historicalRows = buildHistoricalRows(row);
+		const dateFormatter = new Intl.DateTimeFormat(locale, {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		});
 		return (
 			<div className="space-y-3">
 				<div>
-					<div className="font-medium">ISIN</div>
-					<div className="text-sm">{row.isin || "N/A"}</div>
+					<div className="font-medium">{t("table.details.isin")}</div>
+					<div className="text-sm">{row.isin || t("common.na")}</div>
 				</div>
 				<div>
-					<div className="font-medium">Nome</div>
-					<div className="text-sm">{row.name || "N/A"}</div>
+					<div className="font-medium">{t("table.details.name")}</div>
+					<div className="text-sm">{row.name || t("common.na")}</div>
 				</div>
 				<div>
-					<div className="font-medium mb-2">Storico Prezzi</div>
+					<div className="font-medium mb-2">{t("table.details.priceHistory")}</div>
 					{historicalRows.length === 0 ? (
-						<div className="text-sm">Nessun dato storico disponibile.</div>
+						<div className="text-sm">{t("table.details.noHistoricalData")}</div>
 					) : (
 						<div className="space-y-2">
 							{historicalRows.map((entry) => (
 								<div key={entry.dateKey} className="rounded border p-2 text-sm">
-									<div>Data: {entry.dateKey}</div>
-									<div>Prezzo: {entry.price.toFixed(3)} €</div>
-									<div>Rend. Lordo: {entry.annualYieldGrossToday.toFixed(2)}%</div>
-									<div>Rend. Netto: {entry.annualYieldNetToday.toFixed(2)}%</div>
-									<div>Controvalore: {entry.totalValueToday.toFixed(2)} €</div>
-									<div>Differenza: {entry.totalValueDifference.toFixed(2)} €</div>
+									<div>{t("table.details.date")}: {dateFormatter.format(fromDateKey(entry.dateKey))}</div>
+									<div>
+										{t("table.details.price")}: {formatNumber(entry.price, locale, {
+											minimumFractionDigits: 3,
+											maximumFractionDigits: 3,
+										})}
+									</div>
+									<div>
+										{t("table.details.grossYield")}: {formatPercent(entry.annualYieldGrossToday, locale, {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}
+									</div>
+									<div>
+										{t("table.details.netYield")}: {formatPercent(entry.annualYieldNetToday, locale, {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}
+									</div>
+									<div>
+										{t("table.details.marketValue")}: {formatCurrency(entry.totalValueToday, locale, {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}
+									</div>
+									<div>
+										{t("table.details.difference")}: {formatCurrency(entry.totalValueDifference, locale, {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+											signDisplay: "exceptZero",
+										})}
+									</div>
 								</div>
 							))}
 						</div>
@@ -490,7 +525,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 				</div>
 			</div>
 		);
-	}, []);
+	}, [locale, t]);
 
 	const tableMeta = useMemo(
 		() => ({

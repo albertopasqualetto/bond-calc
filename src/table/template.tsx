@@ -9,6 +9,7 @@ import {
 	Row,
 } from "@tanstack/react-table";
 import { useState, useEffect, useRef, useCallback, memo, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
 	Table,
@@ -159,15 +160,28 @@ const toValidDateOrNull = (value: unknown): Date | null => {
 	return null;
 };
 
-const toDisplayString = (value: unknown): string => {
+const toDisplayString = (value: unknown, naLabel: string, locale: string): string => {
 	if (value === undefined || value === null) {
-		return "N/A";
+		return naLabel;
 	}
-	if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+	if (typeof value === "number") {
+		if (!Number.isFinite(value)) {
+			return naLabel;
+		}
+		return new Intl.NumberFormat(locale || "en", { useGrouping: true }).format(value);
+	}
+	if (typeof value === "string" || typeof value === "boolean") {
 		return String(value);
 	}
 	if (value instanceof Date) {
-		return Number.isNaN(value.getTime()) ? "N/A" : value.toISOString();
+		if (Number.isNaN(value.getTime())) {
+			return naLabel;
+		}
+		return new Intl.DateTimeFormat(locale || "en", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(value);
 	}
 	return JSON.stringify(value);
 };
@@ -218,6 +232,8 @@ function DataTableInner<TData, TValue>({
 	deserializeRow,
 	renderRowDetails,
 }: DataTableProps<TData, TValue>) {
+	const { t, i18n } = useTranslation();
+	const locale = i18n.resolvedLanguage || "en";
 	const [selectedRow, setSelectedRow] = useState<TData | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -467,7 +483,7 @@ function DataTableInner<TData, TValue>({
 				const fileHandle = await pickerWindow.showSaveFilePicker({
 					suggestedName: fileName,
 					types: [{
-						description: 'JSON File',
+						description: t("common.jsonFile"),
 						accept: { 'application/json': ['.json'] }
 					}]
 				});
@@ -531,7 +547,7 @@ function DataTableInner<TData, TValue>({
 				applyImportedPayload(parsedData);
 			} catch (error) {
 				console.error("Failed to parse imported data:", error);
-				alert("Failed to import data. Please ensure the file is a valid JSON export.");
+				alert(t("table.alerts.invalidImport"));
 			}
 		};
 		reader.readAsText(file);
@@ -652,21 +668,21 @@ function DataTableInner<TData, TValue>({
 						className="cursor-pointer transition-colors"
 						disabled={!table.getRowModel().rows.length}
 					>
-						<Download className="mr-2 h-4 w-4" /> Export
+						<Download className="mr-2 h-4 w-4" /> {t("table.actions.export")}
 					</Button>
 					<Button
 						onClick={handleImportClick}
 						variant="outline"
 						className="cursor-pointer transition-colors"
 					>
-						<Upload className="mr-2 h-4 w-4" /> Import
+						<Upload className="mr-2 h-4 w-4" /> {t("table.actions.import")}
 					{/* Hidden file input for import */}
 					<input
 						type="file"
 						ref={fileInputRef}
 						onChange={handleFileUpload}
 						accept=".json"
-						title="Import JSON"
+						title={t("table.actions.importJsonTitle")}
 						className="hidden"
 					/>
 					</Button>
@@ -681,7 +697,7 @@ function DataTableInner<TData, TValue>({
 										meta?.deleteConfirmState && "bg-white-500 text-red-500 border"
 									)}
 						>
-							<Trash2 /> {meta?.deleteConfirmState ? "Are you sure?" : "Delete All"}
+							<Trash2 /> {meta?.deleteConfirmState ? t("table.actions.confirmDeleteAll") : t("table.actions.deleteAll")}
 						</Button>
 					)}
 					{onAddRow && (
@@ -689,7 +705,7 @@ function DataTableInner<TData, TValue>({
 							onClick={onAddRow}
 							className="cursor-pointer transition-colors"
 						>
-							<Plus /> Add Row
+							<Plus /> {t("table.actions.addRow")}
 						</Button>
 					)}
 				</div>
@@ -700,9 +716,9 @@ function DataTableInner<TData, TValue>({
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Row Details</DialogTitle>
+						<DialogTitle>{t("table.dialogs.rowDetailsTitle")}</DialogTitle>
 						<DialogDescription>
-							Detailed view of the selected asset.
+							{t("table.dialogs.rowDetailsDescription")}
 						</DialogDescription>
 					</DialogHeader>
 					{selectedRow && (
@@ -719,7 +735,7 @@ function DataTableInner<TData, TValue>({
 									<div key={i} className="mb-2">
 										<div className="font-medium">{String(column.header)}</div>
 										<div className="text-sm">
-											{toDisplayString(selectedRowCandidate[id])}
+												{toDisplayString(selectedRowCandidate[id], t("common.na"), locale)}
 										</div>
 									</div>
 								);
@@ -730,11 +746,11 @@ function DataTableInner<TData, TValue>({
 					<DialogFooter className="flex justify-between gap-2 pt-4">
 						{onDeleteRow && (
 							<Button variant="destructive" onClick={handleDeleteRow} className="cursor-pointer">
-								<Trash2 className="mr-2 h-4 w-4" /> Remove Row
+								<Trash2 className="mr-2 h-4 w-4" /> {t("table.actions.removeRow")}
 							</Button>
 						)}
 						<DialogClose render={<Button variant="outline" className="cursor-pointer" />}>
-							Close
+							{t("common.close")}
 						</DialogClose>
 					</DialogFooter>
 				</DialogContent>

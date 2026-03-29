@@ -3,10 +3,12 @@ import YieldsTable from "./table/table"
 import { Button } from "@/components/ui/button"
 import { PenLine, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { useTranslation } from "react-i18next"
 import "./global.css"
 import "./print.css"
 
 export default function App() {
+	const { t } = useTranslation();
 	const [darkMode, setDarkMode] = useState(() => 
 		window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
 	);
@@ -63,7 +65,7 @@ export default function App() {
 		<>
 			<div className="flex items-baseline justify-center mt-4">
 				<span className="text-3xl font-semibold tracking-tight">
-					Scheda titoli
+					{t("app.title")}
 				</span>
 				<div className="flex items-baseline">
 					{!isEditing ? (

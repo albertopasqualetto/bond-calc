@@ -1,0 +1,70 @@
+{
+	"app": {
+		"title": "Scheda titoli"
+	},
+	"common": {
+		"na": "N/D",
+		"close": "Chiudi",
+		"jsonFile": "File JSON"
+	},
+	"table": {
+		"status": {
+			"loadingData": "Caricamento dati...",
+			"fetchFailed": "Recupero dati non riuscito"
+		},
+		"actions": {
+			"export": "Esporta",
+			"import": "Importa",
+			"importJsonTitle": "Importa JSON",
+			"deleteAll": "Elimina tutto",
+			"confirmDeleteAll": "Sei sicuro?",
+			"addRow": "Aggiungi riga",
+			"removeRow": "Rimuovi riga"
+		},
+		"dialogs": {
+			"rowDetailsTitle": "Dettagli riga",
+			"rowDetailsDescription": "Vista dettagliata del titolo selezionato."
+		},
+		"alerts": {
+			"invalidImport": "Importazione non riuscita. Assicurati che il file sia un export JSON valido."
+		},
+		"details": {
+			"isin": "ISIN",
+			"name": "Nome",
+			"priceHistory": "Storico prezzi",
+			"noHistoricalData": "Nessun dato storico disponibile.",
+			"date": "Data",
+			"price": "Prezzo",
+			"grossYield": "Rendimento lordo",
+			"netYield": "Rendimento netto",
+			"marketValue": "Controvalore",
+			"difference": "Differenza"
+		},
+		"headers": {
+			"isin": "ISIN",
+			"name": "Nome",
+			"nominal": "Nominale",
+			"maturity": "Scadenza",
+			"coupon": "Cedola",
+			"taxation": "Tassazione",
+			"settlementDate": "Data PMC",
+			"settlementPrice": "PMC",
+			"redemption": "Rimborso",
+			"yield": "Rendimento",
+			"gross": "Lordo",
+			"net": "Netto",
+			"yieldSellingToday": "Rendimento vendendo oggi",
+			"priceToday": "Prezzo oggi",
+			"countervalue": "Controvalore",
+			"purchase": "Acquisto",
+			"today": "Oggi",
+			"difference": "Differenza",
+			"notes": "Note"
+		},
+		"placeholders": {
+			"isin": "ISIN",
+			"taxation": "Tassazione",
+			"selectValue": "Seleziona un valore"
+		}
+	}
+}

@@ -1,0 +1,70 @@
+{
+	"app": {
+		"title": "Bond sheet"
+	},
+	"common": {
+		"na": "N/A",
+		"close": "Close",
+		"jsonFile": "JSON file"
+	},
+	"table": {
+		"status": {
+			"loadingData": "Loading data...",
+			"fetchFailed": "Data fetch failed"
+		},
+		"actions": {
+			"export": "Export",
+			"import": "Import",
+			"importJsonTitle": "Import JSON",
+			"deleteAll": "Delete all",
+			"confirmDeleteAll": "Are you sure?",
+			"addRow": "Add row",
+			"removeRow": "Remove row"
+		},
+		"dialogs": {
+			"rowDetailsTitle": "Row details",
+			"rowDetailsDescription": "Detailed view of the selected asset."
+		},
+		"alerts": {
+			"invalidImport": "Failed to import data. Please ensure the file is a valid JSON export."
+		},
+		"details": {
+			"isin": "ISIN",
+			"name": "Name",
+			"priceHistory": "Price history",
+			"noHistoricalData": "No historical data available.",
+			"date": "Date",
+			"price": "Price",
+			"grossYield": "Gross yield",
+			"netYield": "Net yield",
+			"marketValue": "Market value",
+			"difference": "Difference"
+		},
+		"headers": {
+			"isin": "ISIN",
+			"name": "Name",
+			"nominal": "Nominal",
+			"maturity": "Maturity",
+			"coupon": "Coupon",
+			"taxation": "Taxation",
+			"settlementDate": "Settlement date",
+			"settlementPrice": "Settlement price",
+			"redemption": "Redemption",
+			"yield": "Yield",
+			"gross": "Gross",
+			"net": "Net",
+			"yieldSellingToday": "Yield selling today",
+			"priceToday": "Price today",
+			"countervalue": "Market value",
+			"purchase": "Purchase",
+			"today": "Today",
+			"difference": "Difference",
+			"notes": "Notes"
+		},
+		"placeholders": {
+			"isin": "ISIN",
+			"taxation": "Taxation",
+			"selectValue": "Select a value"
+		}
+	}
+}

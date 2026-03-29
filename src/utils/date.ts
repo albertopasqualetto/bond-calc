@@ -33,3 +33,33 @@ export function toDateKey(date: Date | string): string {
 export function fromDateKey(dateKey: string): Date {
 	return new Date(`${dateKey}T00:00:00`);
 }
+
+const resolveLocale = (locale: string | undefined): string => {
+	return locale || "en";
+};
+
+export function formatDate(
+	value: Date | string,
+	locale: string,
+	options: Intl.DateTimeFormatOptions = {},
+): string {
+	const date = value instanceof Date ? value : new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		return "";
+	}
+
+	return new Intl.DateTimeFormat(resolveLocale(locale), {
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		...options,
+	}).format(date);
+}
+
+export function formatDateKey(
+	dateKey: string,
+	locale: string,
+	options: Intl.DateTimeFormatOptions = {},
+): string {
+	return formatDate(fromDateKey(dateKey), locale, options);
+}

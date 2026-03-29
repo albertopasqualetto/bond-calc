@@ -4,6 +4,7 @@ import type { CellContext } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { JSX, useState, ComponentPropsWithoutRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	Select,
 	SelectTrigger,
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils";
+import { formatNumber, normalizeNumber } from "@/utils/number";
 
 type InputLikeProps = Omit<ComponentPropsWithoutRef<typeof Input>, "value" | "defaultValue" | "onChange" | "onBlur">;
 
@@ -76,12 +78,94 @@ const parseDateInputValue = (value: string): Date | undefined => {
 	return parsedDate;
 };
 
+const getFractionDigits = (value: string): number => {
+	const trimmedValue = value.trim();
+	const lastSeparatorIndex = Math.max(trimmedValue.lastIndexOf("."), trimmedValue.lastIndexOf(","));
+
+	if (lastSeparatorIndex < 0) {
+		return 0;
+	}
+
+	const fractionPart = trimmedValue.slice(lastSeparatorIndex + 1);
+	if (!/^\d+$/.test(fractionPart)) {
+		return 0;
+	}
+
+	return fractionPart.length;
+};
+
+const formatNumericInputDisplayValue = (value: string | number, locale: string): string => {
+	if (typeof value === "number") {
+		if (!Number.isFinite(value)) {
+			return "";
+		}
+
+		return formatNumber(value, locale);
+	}
+
+	const trimmedValue = value.trim();
+	if (trimmedValue === "") {
+		return "";
+	}
+
+	const parsed = normalizeNumber(trimmedValue);
+	if (!Number.isFinite(parsed)) {
+		return value;
+	}
+
+	const fractionDigits = getFractionDigits(trimmedValue);
+	return formatNumber(parsed, locale, {
+		minimumFractionDigits: fractionDigits,
+		maximumFractionDigits: fractionDigits,
+	});
+};
+
+const toEditableNumericInputValue = (value: string | number): string => {
+	if (typeof value === "number") {
+		return Number.isFinite(value) ? String(value) : "";
+	}
+
+	const trimmedValue = value.trim();
+	if (trimmedValue === "") {
+		return "";
+	}
+
+	const parsed = normalizeNumber(trimmedValue);
+	if (!Number.isFinite(parsed)) {
+		return value;
+	}
+
+	return String(parsed);
+};
+
+const toNumericCommitValue = (value: string): string | number => {
+	const trimmedValue = value.trim();
+	if (trimmedValue === "") {
+		return "";
+	}
+
+	const parsed = normalizeNumber(trimmedValue);
+	if (!Number.isFinite(parsed)) {
+		return value;
+	}
+
+	return parsed;
+};
+
 type EditableTextFieldProps = {
 	initialValue: string;
 	multiline?: boolean;
 	className?: string;
 	safeProps: InputLikeProps;
 	onCommit: (nextValue: string) => void;
+};
+
+type LocalizedNumericInputFieldProps = {
+	initialValue: string | number;
+	className?: string;
+	safeProps: InputLikeProps;
+	locale: string;
+	onCommit: (nextValue: string | number) => void;
 };
 
 const EditableTextField = ({
@@ -110,6 +194,39 @@ const EditableTextField = ({
 		<Input
 			value={value}
 			onChange={(e) => setValue(e.target.value)}
+			onBlur={handleBlur}
+			className={className}
+			{...safeProps}
+		/>
+	);
+};
+
+const LocalizedNumericInputField = ({
+	initialValue,
+	className,
+	safeProps,
+	locale,
+	onCommit,
+}: LocalizedNumericInputFieldProps): JSX.Element => {
+	const [lastCommittedValue, setLastCommittedValue] = useState<string | number>(initialValue);
+	const [value, setValue] = useState<string>(() => formatNumericInputDisplayValue(initialValue, locale));
+
+	const handleFocus = () => {
+		setValue(toEditableNumericInputValue(lastCommittedValue));
+	};
+
+	const handleBlur = () => {
+		const committedValue = toNumericCommitValue(value);
+		setLastCommittedValue(committedValue);
+		onCommit(committedValue);
+		setValue(formatNumericInputDisplayValue(committedValue, locale));
+	};
+
+	return (
+		<Input
+			value={value}
+			onChange={(e) => setValue(e.target.value)}
+			onFocus={handleFocus}
 			onBlur={handleBlur}
 			className={className}
 			{...safeProps}
@@ -173,6 +290,50 @@ export const SuffixEditableTextCell = <T extends object>({
 	);
 };
 
+export const LocalizedSuffixEditableTextCell = <T extends object>({
+	getValue,
+	renderValue: strippedRenderValue,
+	cell: strippedCell,
+	row: { index },
+	column: { id },
+	table,
+	suffix,
+	className,
+	locale,
+	...props
+}: CellContext<T, string | number> &
+	InputLikeProps & {
+		suffix: string;
+		className?: string;
+		locale: string;
+	}): JSX.Element => {
+	const initialValue = getValue();
+	const resetKey = `${index}:${String(id)}:${String(initialValue ?? "")}:${locale}`;
+	const numericValue = typeof initialValue === "number" || typeof initialValue === "string"
+		? initialValue
+		: "";
+
+	void strippedRenderValue;
+	void strippedCell;
+	const safeProps = omitCellContextProps(props);
+
+	return (
+		<div className={cn("relative", className)}>
+			<LocalizedNumericInputField
+				key={resetKey}
+				initialValue={numericValue}
+				className={className}
+				safeProps={safeProps}
+				locale={locale}
+				onCommit={(nextValue) => callUpdateData(table, index, String(id), nextValue)}
+			/>
+			<span className="absolute right-[10px] top-1/2 -translate-y-1/2 pointer-events-none">
+				{suffix}
+			</span>
+		</div>
+	);
+};
+
 export const EditableCheckboxCell = <T extends object>({
 	getValue,
 	renderValue: strippedRenderValue,
@@ -214,7 +375,7 @@ export const EditableSelectCell = <T extends object>({
 	column,
 	table,
 	options,
-	placeholder="Select a value",
+	placeholder,
 	className,
 	...props
 }: CellContext<T, string> & {
@@ -226,11 +387,17 @@ export const EditableSelectCell = <T extends object>({
 		"onValueChange" | "value" | "defaultValue"
 	>) => {
 	const initialValue = getValue();
+	const { t } = useTranslation();
 	const [open, setOpen] = useState(false);
 	void strippedRenderValue;
 	void strippedCell;
 	const safeProps = omitCellContextProps(props);
-	const selectedValue = typeof initialValue === "string" ? initialValue : "";
+	const selectedValue =
+		typeof initialValue === "string" || typeof initialValue === "number"
+			? String(initialValue)
+			: "";
+	const selectedOption = options.find((option) => option.value === selectedValue);
+	const resolvedPlaceholder = placeholder || t("table.placeholders.selectValue");
 
 	function handleChange(value: unknown) {
 		const nextValue = String(value);
@@ -246,7 +413,7 @@ export const EditableSelectCell = <T extends object>({
 			{...safeProps}
 		>
 			<SelectTrigger className={className}>
-				<SelectValue placeholder={placeholder} />
+				<SelectValue placeholder={resolvedPlaceholder}>{selectedOption?.label}</SelectValue>
 			</SelectTrigger>
 			<SelectContent>
 				{options.map((option) => (
