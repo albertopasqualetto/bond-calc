@@ -1,0 +1,17 @@
+{
+	"cSpell.words": [
+		"Borsa",
+		"cashflows",
+		"isin",
+		"Italiana",
+		"Perc",
+		"xirr"
+	],
+	"chat.mcp.serverSampling": {
+		"bond-calc/.vscode/mcp.json: shadcn": {
+			"allowedModels": [
+				"copilot/auto"
+			]
+		}
+	}
+}

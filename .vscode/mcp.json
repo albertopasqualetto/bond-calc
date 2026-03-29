@@ -1,0 +1,15 @@
+{
+  "servers": {
+    "shadcn": {
+      "command": "fnm",
+      "args": [
+        "exec",
+        "--using=default",
+        "npx.cmd",
+        "-y",
+        "shadcn@latest",
+        "mcp"
+      ]
+    }
+  }
+}
