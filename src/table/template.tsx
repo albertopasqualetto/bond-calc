@@ -580,7 +580,8 @@ function DataTableInner<TData, TValue>({
 			target.closest('[role="option"]') !== null ||
 			target.closest('[data-slot="select-trigger"]') !== null ||
 			target.closest('[data-slot="select-content"]') !== null ||
-			target.closest('[data-slot="select-item"]') !== null;
+			target.closest('[data-slot="select-item"]') !== null ||
+			target.closest('[data-slot="input-group"]') !== null;
 
 		if (!isInteractive) {
 			setSelectedRow(row);

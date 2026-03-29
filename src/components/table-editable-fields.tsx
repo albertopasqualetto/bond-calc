@@ -3,7 +3,7 @@
 import type { CellContext } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { JSX, useState, ComponentPropsWithoutRef } from "react";
+import { JSX, useState, ComponentPropsWithoutRef, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	Select,
@@ -12,9 +12,20 @@ import {
 	SelectContent,
 	SelectItem,
 } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from "@/components/ui/input-group";
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils";
 import { formatNumber, normalizeNumber } from "@/utils/number";
+import { CalendarIcon } from "lucide-react";
+import { enUS } from "date-fns/locale";
+import * as dateFnsLocales from "date-fns/locale";
 
 type InputLikeProps = Omit<ComponentPropsWithoutRef<typeof Input>, "value" | "defaultValue" | "onChange" | "onBlur">;
 
@@ -56,15 +67,36 @@ const formatDateInputValue = (value: Date | undefined): string => {
 	return `${year}-${month}-${day}`;
 };
 
+const normalizeDate = (value: Date): Date => {
+	const normalized = new Date(value);
+	normalized.setHours(0, 0, 0, 0);
+	return normalized;
+};
+
+const isSameDate = (first: Date | undefined, second: Date | undefined): boolean => {
+	if (!first || !second) {
+		return false;
+	}
+
+	return first.getTime() === second.getTime();
+};
+
+const DATE_INPUT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 const parseDateInputValue = (value: string): Date | undefined => {
-	if (!value) {
+	const trimmedValue = value.trim();
+	if (trimmedValue === "") {
 		return undefined;
 	}
 
-	const [yearPart, monthPart, dayPart] = value.split("-");
-	const year = Number(yearPart);
-	const month = Number(monthPart);
-	const day = Number(dayPart);
+	const match = DATE_INPUT_PATTERN.exec(trimmedValue);
+	if (!match) {
+		return undefined;
+	}
+
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
 
 	if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
 		return undefined;
@@ -75,7 +107,68 @@ const parseDateInputValue = (value: string): Date | undefined => {
 		return undefined;
 	}
 
-	return parsedDate;
+	if (
+		parsedDate.getFullYear() !== year ||
+		parsedDate.getMonth() !== month - 1 ||
+		parsedDate.getDate() !== day
+	) {
+		return undefined;
+	}
+
+	return normalizeDate(parsedDate);
+};
+
+type CalendarLocale = NonNullable<ComponentPropsWithoutRef<typeof Calendar>["locale"]>;
+type CalendarLocaleWithCode = CalendarLocale & { code: string };
+
+const isCalendarLocale = (value: unknown): value is CalendarLocaleWithCode => {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+
+	return (
+		"code" in value &&
+		typeof (value as { code?: unknown }).code === "string"
+	);
+};
+
+const calendarLocales: CalendarLocaleWithCode[] = (Object.values(dateFnsLocales) as unknown[]).filter(
+	isCalendarLocale,
+);
+
+const resolveCalendarLocale = (
+	locale: string | undefined,
+): ComponentPropsWithoutRef<typeof Calendar>["locale"] => {
+	if (!locale) {
+		return enUS;
+	}
+
+	const normalizedLocale = locale.replace("_", "-").toLowerCase();
+
+	const exactMatch = calendarLocales.find(
+		(candidate) => candidate.code?.toLowerCase() === normalizedLocale,
+	);
+	if (exactMatch) {
+		return exactMatch;
+	}
+
+	const baseLanguage = normalizedLocale.split("-")[0];
+	if (!baseLanguage) {
+		return enUS;
+	}
+
+	const baseMatch = calendarLocales.find(
+		(candidate) => candidate.code?.toLowerCase() === baseLanguage,
+	);
+	if (baseMatch) {
+		return baseMatch;
+	}
+
+	const languageRegionFallback = calendarLocales.find((candidate) =>
+		candidate.code?.toLowerCase().startsWith(`${baseLanguage}-`) ?? false,
+	);
+
+	return languageRegionFallback ?? enUS;
 };
 
 const getFractionDigits = (value: string): number => {
@@ -168,6 +261,14 @@ type LocalizedNumericInputFieldProps = {
 	onCommit: (nextValue: string | number) => void;
 };
 
+type EditableDatePickerFieldProps = {
+	initialValue: Date | undefined;
+	className?: string;
+	safeProps: InputLikeProps;
+	locale: string;
+	onCommit: (nextValue: Date) => void;
+};
+
 const EditableTextField = ({
 	initialValue,
 	multiline,
@@ -188,7 +289,7 @@ const EditableTextField = ({
 			onBlur={handleBlur}
 			rows={2}
 			cols={200}
-			className={cn("min-h-[30px] min-w-[200px]", className)}
+			className={cn("min-h-7.5 min-w-50", className)}
 		/>
 	) : (
 		<Input
@@ -231,6 +332,127 @@ const LocalizedNumericInputField = ({
 			className={className}
 			{...safeProps}
 		/>
+	);
+};
+
+const EditableDatePickerField = ({
+	initialValue,
+	className,
+	safeProps,
+	locale,
+	onCommit,
+}: EditableDatePickerFieldProps): JSX.Element => {
+	const [open, setOpen] = useState(false);
+	const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+		initialValue ? normalizeDate(initialValue) : undefined,
+	);
+	const [month, setMonth] = useState<Date | undefined>(
+		initialValue ? normalizeDate(initialValue) : undefined,
+	);
+	const [inputValue, setInputValue] = useState<string>(() => formatDateInputValue(initialValue));
+	const calendarLocale = resolveCalendarLocale(locale);
+
+	const commitDate = (nextDate: Date | undefined) => {
+		if (!nextDate) {
+			return;
+		}
+
+		const normalizedDate = normalizeDate(nextDate);
+		setSelectedDate(normalizedDate);
+		setMonth(normalizedDate);
+		setInputValue(formatDateInputValue(normalizedDate));
+
+		if (!isSameDate(selectedDate, normalizedDate)) {
+			onCommit(normalizedDate);
+		}
+	};
+
+	const handleInputBlur = () => {
+		const parsedDate = parseDateInputValue(inputValue);
+		if (!parsedDate) {
+			setInputValue(formatDateInputValue(selectedDate));
+			return;
+		}
+
+		commitDate(parsedDate);
+	};
+
+	const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			setOpen(true);
+			return;
+		}
+
+		if (event.key !== "Enter") {
+			return;
+		}
+
+		event.preventDefault();
+		const parsedDate = parseDateInputValue(inputValue);
+		if (!parsedDate) {
+			setInputValue(formatDateInputValue(selectedDate));
+			return;
+		}
+
+		commitDate(parsedDate);
+		setOpen(false);
+	};
+
+	return (
+		<InputGroup className={cn("min-w-20", className)}>
+			<InputGroupInput
+				value={inputValue}
+				onChange={(event) => setInputValue(event.target.value)}
+				onBlur={handleInputBlur}
+				onKeyDown={handleInputKeyDown}
+				placeholder="YYYY-MM-DD"
+				className="min-w-15"
+				{...safeProps}
+			/>
+			<InputGroupAddon align="inline-end">
+				<Popover open={open} onOpenChange={setOpen}>
+					<PopoverTrigger
+						render={
+							<InputGroupButton
+								id="date-picker"
+								variant="ghost"
+								size="icon-xs"
+								aria-label="Select date"
+							>
+								<CalendarIcon />
+								<span className="sr-only">Select date</span>
+							</InputGroupButton>
+						}
+					/>
+					<PopoverContent
+						className="w-auto overflow-hidden gap-0 p-0"
+						align="end"
+						alignOffset={-8}
+						sideOffset={10}
+					>
+						<Calendar
+							mode="single"
+							selected={selectedDate}
+							month={month}
+							onMonthChange={setMonth}
+							onSelect={(nextDate) => {
+								if (!nextDate) {
+									return;
+								}
+
+								commitDate(nextDate);
+								setOpen(false);
+							}}
+							captionLayout="dropdown"
+							startMonth={new Date(1970, 0)}
+							endMonth={new Date(2100, 11)}
+							locale={calendarLocale}
+						/>
+					</PopoverContent>
+				</Popover>
+			</InputGroupAddon>
+		</InputGroup>
 	);
 };
 
@@ -283,7 +505,7 @@ export const SuffixEditableTextCell = <T extends object>({
 	return (
 		<div className={cn("relative", className)}>
 			<EditableTextCell className={className} {...props} />
-			<span className="absolute right-[10px] top-1/2 -translate-y-1/2 pointer-events-none">
+			<span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
 				{suffix}
 			</span>
 		</div>
@@ -327,7 +549,7 @@ export const LocalizedSuffixEditableTextCell = <T extends object>({
 				locale={locale}
 				onCommit={(nextValue) => callUpdateData(table, index, String(id), nextValue)}
 			/>
-			<span className="absolute right-[10px] top-1/2 -translate-y-1/2 pointer-events-none">
+			<span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
 				{suffix}
 			</span>
 		</div>
@@ -438,33 +660,35 @@ export const EditableDatePickerCell = <T extends object>({
 }: CellContext<T, Date> & {
 	className?: string;
 } & Omit<ComponentPropsWithoutRef<typeof Input>, "value" | "defaultValue" | "onChange" | "onBlur">) => {
+	const { i18n } = useTranslation();
 	const initialValue = getValue();
+	const locale = i18n.resolvedLanguage || "en";
+	const normalizedInitialValue =
+		initialValue instanceof Date && !Number.isNaN(initialValue.getTime())
+			? normalizeDate(initialValue)
+			: undefined;
+	const resetKey = `${row.index}:${String(column.id)}:${formatDateInputValue(normalizedInitialValue)}`;
 	void strippedRenderValue;
 	void strippedCell;
 	const safeProps = omitCellContextProps(props);
-	const inputValue = formatDateInputValue(initialValue);
 
-	function handleChange(nextRawValue: string) {
-		const nextDate = parseDateInputValue(nextRawValue);
-		if (!nextDate) {
-			return;
-		}
-
-		if (initialValue instanceof Date && initialValue.getTime() === nextDate.getTime()) {
+	const handleCommit = (nextDate: Date) => {
+		if (isSameDate(normalizedInitialValue, nextDate)) {
 			return;
 		}
 
 		callUpdateData(table, row.index, String(column.id), nextDate);
-	}
+	};
 
 	return (
-		<div className={cn("w-[120px]", className)}>
-			<Input
-				type="date"
-				value={inputValue}
-				onChange={(e) => handleChange(e.target.value)}
-				className="min-w-[120px]"
-				{...safeProps}
+		<div className={cn("w-30", className)}>
+			<EditableDatePickerField
+				key={resetKey}
+				initialValue={normalizedInitialValue}
+				className="w-full"
+				safeProps={safeProps}
+				locale={locale}
+				onCommit={handleCommit}
 			/>
 		</div>
 	);
