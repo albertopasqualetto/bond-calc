@@ -41,10 +41,17 @@
 			"loadingData": "Loading data...",
 			"fetchFailed": "Data fetch failed"
 		},
+		"toasts": {
+			"loading": "Fetching data for {{isin}}...",
+			"success": "Updated {{name}} ({{isin}})",
+			"error": "Failed to fetch data for {{isin}}"
+		},
 		"actions": {
 			"export": "Export",
 			"import": "Import",
 			"importJsonTitle": "Import JSON",
+			"refreshRow_one": "Download today's price",
+			"refreshRow_other": "Download today's prices",
 			"deleteAll": "Delete all",
 			"confirmDeleteAll": "Are you sure?",
 			"addRow": "Add row",

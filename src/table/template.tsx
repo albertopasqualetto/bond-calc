@@ -37,7 +37,7 @@ import {
 	DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, Download, Upload } from "lucide-react";
+import { Trash2, Plus, Download, Upload, CalendarSync } from "lucide-react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +50,8 @@ interface DataTableProps<TData, TValue> {
 	onAddRow?: () => void;
 	onDeleteAllRows?: () => void;
 	onDeleteRow?: (row: TData) => void;
+	onRefreshRow?: (row: TData) => void;
+	onRefreshAllRows?: () => void;
 	onNameChange?: (name: string) => void;
 	onDataChange?: (data: TData[]) => void; // New callback for data changes from storage
 	localStorageKey?: string;
@@ -216,6 +218,19 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
 	return typeof value === "object" && value !== null;
 };
 
+const getRowIdentity = (value: unknown): string | null => {
+	if (!isRecord(value)) {
+		return null;
+	}
+
+	const rowId = value._rowId;
+	if (typeof rowId === "string" && rowId.length > 0) {
+		return rowId;
+	}
+
+	return null;
+};
+
 function TableRowMemoizedInner<TData>({
 	row,
 	onClick,
@@ -249,6 +264,8 @@ function DataTableInner<TData, TValue>({
 	onAddRow,
 	onDeleteAllRows,
 	onDeleteRow,
+	onRefreshRow,
+	onRefreshAllRows,
 	onNameChange,
 	onDataChange,
 	localStorageKey = FINANCIAL_ASSETS_LOCAL_STORAGE_KEY,
@@ -518,6 +535,26 @@ function DataTableInner<TData, TValue>({
 		}
 	}, [data, name, localStorageKey, serializeRow]);
 
+	// Keep the row details dialog synchronized when live row data changes.
+	useEffect(() => {
+		if (!isDialogOpen || !selectedRow) {
+			return;
+		}
+
+		const selectedRowId = getRowIdentity(selectedRow);
+		if (!selectedRowId) {
+			return;
+		}
+
+		const latestRow = data.find(
+			(row) => getRowIdentity(row) === selectedRowId,
+		);
+
+		if (latestRow && latestRow !== selectedRow) {
+			setSelectedRow(latestRow);
+		}
+	}, [data, isDialogOpen, selectedRow]);
+
 	const handleExportData = async () => {
 		const tableDataToExport = serializeRow
 			? data.map((item) => serializeRow(item))
@@ -669,6 +706,12 @@ function DataTableInner<TData, TValue>({
 		}
 	};
 
+	const handleRefreshRow = () => {
+		if (selectedRow && onRefreshRow) {
+			onRefreshRow(selectedRow);
+		}
+	};
+
 	const table = useReactTable({
 		data,
 		columns,
@@ -764,6 +807,19 @@ function DataTableInner<TData, TValue>({
 							className="hidden"
 						/>
 					</Button>
+					{onRefreshAllRows && (
+						<Button
+							onClick={onRefreshAllRows}
+							variant="outline"
+							className="cursor-pointer transition-colors"
+							disabled={!table.getRowModel().rows.length}
+						>
+							<CalendarSync className="mr-2 h-4 w-4" />{" "}
+							{t("table.actions.refreshRow", {
+								count: table.getRowModel().rows.length,
+							})}
+						</Button>
+					)}
 				</div>
 				<div className="flex gap-3 p-4">
 					{onDeleteAllRows && (
@@ -839,16 +895,30 @@ function DataTableInner<TData, TValue>({
 					)}
 
 					<DialogFooter className="flex justify-between gap-2 pt-4">
-						{onDeleteRow && (
-							<Button
-								variant="destructive"
-								onClick={handleDeleteRow}
-								className="cursor-pointer"
-							>
-								<Trash2 className="mr-2 h-4 w-4" />{" "}
-								{t("table.actions.removeRow")}
-							</Button>
-						)}
+						<div className="flex items-center gap-2">
+							{onRefreshRow && (
+								<Button
+									variant="outline"
+									onClick={handleRefreshRow}
+									className="cursor-pointer"
+								>
+									<CalendarSync className="mr-2 h-4 w-4" />{" "}
+									{t("table.actions.refreshRow", {
+										count: 1,
+									})}
+								</Button>
+							)}
+							{onDeleteRow && (
+								<Button
+									variant="destructive"
+									onClick={handleDeleteRow}
+									className="cursor-pointer"
+								>
+									<Trash2 className="mr-2 h-4 w-4" />{" "}
+									{t("table.actions.removeRow")}
+								</Button>
+							)}
+						</div>
 						<DialogClose
 							render={
 								<Button

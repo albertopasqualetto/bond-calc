@@ -41,10 +41,17 @@
 			"loadingData": "Caricamento dati...",
 			"fetchFailed": "Recupero dati non riuscito"
 		},
+		"toasts": {
+			"loading": "Recupero dati per {{isin}}...",
+			"success": "Aggiornato {{name}} ({{isin}})",
+			"error": "Recupero dati non riuscito per {{isin}}"
+		},
 		"actions": {
 			"export": "Esporta",
 			"import": "Importa",
 			"importJsonTitle": "Importa JSON",
+			"refreshRow_one": "Scarica prezzo odierno",
+			"refreshRow_other": "Scarica prezzi odierni",
 			"deleteAll": "Elimina tutto",
 			"confirmDeleteAll": "Sei sicuro?",
 			"addRow": "Aggiungi riga",

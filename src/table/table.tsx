@@ -12,6 +12,7 @@ import { FINANCIAL_ASSETS_LOCAL_STORAGE_KEY } from "@/constants";
 import { fromDateKey, isDateToday, toDateKey } from "@/utils/date";
 import { normalizeNumber } from "@/utils/number";
 import { FinancialAsset } from "@/lib/financialAsset";
+import { toast } from "sonner";
 
 const RowDetails = lazy(() => import("@/table/row-details"));
 
@@ -51,6 +52,16 @@ const upsertPriceByDate = (
 		...(existing || {}),
 		[dateKey]: Number(price),
 	};
+};
+
+const normalizeIsinValue = (value: unknown): string => {
+	if (typeof value === "string") {
+		return value.trim();
+	}
+	if (typeof value === "number") {
+		return String(value).trim();
+	}
+	return "";
 };
 
 const calculateTotalValues = (row: FinancialAssetRow) => {
@@ -317,6 +328,114 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 		return rehydrateRowFromPersistence(row as PersistedFinancialAssetRow);
 	}, []);
 
+	const refreshRowFromApi = useCallback(
+		async (rowId: string, isin: string): Promise<void> => {
+			const normalizedIsin = normalizeIsinValue(isin);
+			if (normalizedIsin.length !== 12) {
+				return;
+			}
+
+			const refreshPromise = (async () => {
+				const todayDateKey = toDateKey(new Date());
+				const { fetchBorsaItalianaData } =
+					await import("@/fetching/fetchBorsaItaliana");
+				const bondData = await fetchBorsaItalianaData(normalizedIsin);
+
+				setData((currentData) => {
+					return currentData.map((currentRow) => {
+						if (currentRow._rowId !== rowId) {
+							return currentRow;
+						}
+
+						const normalizedPrice = normalizeNumber(
+							bondData.price.last || 0,
+						);
+						const nextRow: FinancialAssetRow = {
+							...currentRow,
+							name: bondData.title,
+							issuingDate: bondData.info.issuingDate,
+							maturityDate: bondData.info.maturityDate,
+							couponRatePerc: bondData.info.couponRatePerc,
+							yearlyFrequency: bondData.info.couponFrequency,
+							priceByDate: upsertPriceByDate(
+								currentRow.priceByDate,
+								todayDateKey,
+								normalizedPrice,
+							),
+						};
+
+						if (isDateToday(currentRow.settlementDate)) {
+							nextRow.settlementPrice = normalizedPrice;
+						}
+
+						return recalculateDerivedFields(nextRow);
+					});
+				});
+
+				return bondData.title;
+			})();
+
+			// sonner exposes a runtime-typed API; keep usage centralized here.
+
+			void toast.promise(refreshPromise, {
+				loading: t("table.toasts.loading", { isin: normalizedIsin }),
+				success: (title: unknown) =>
+					t("table.toasts.success", {
+						name:
+							typeof title === "string" && title.trim().length > 0
+								? title
+								: normalizedIsin,
+						isin: normalizedIsin,
+					}),
+				error: t("table.toasts.error", { isin: normalizedIsin }),
+			});
+
+			try {
+				await refreshPromise;
+			} catch (error) {
+				console.error(
+					`[refreshRowFromApi] Error fetching data for ISIN ${normalizedIsin}:`,
+					error,
+				);
+				throw error;
+			}
+		},
+		[t],
+	);
+
+	const handleRefreshAllRows = useCallback(() => {
+		const rowsToRefresh = data
+			.map((row) => ({
+				rowId: row._rowId || "",
+				isin: normalizeIsinValue(row.isin),
+			}))
+			.filter((row) => row.rowId.length > 0 && row.isin.length === 12);
+
+		if (rowsToRefresh.length === 0) {
+			return;
+		}
+
+		void Promise.allSettled(
+			rowsToRefresh.map(({ rowId, isin }) =>
+				refreshRowFromApi(rowId, isin),
+			),
+		);
+	}, [data, refreshRowFromApi]);
+
+	const handleRefreshRow = useCallback(
+		(row: FinancialAssetRow) => {
+			const rowId = row._rowId || "";
+			const isin = normalizeIsinValue(row.isin);
+
+			if (!rowId || isin.length !== 12) {
+				return;
+			}
+
+			void refreshRowFromApi(rowId, isin);
+		},
+		[refreshRowFromApi],
+	);
+
 	// This function will handle cell updates
 	const handleUpdateData = useCallback(
 		(rowIndex: number, columnId: string, value: unknown) => {
@@ -367,12 +486,7 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 				return;
 			}
 
-			const isin =
-				typeof value === "string"
-					? value.trim()
-					: typeof value === "number"
-						? String(value).trim()
-						: "";
+			const isin = normalizeIsinValue(value);
 
 			if (isin.length !== 12) {
 				return;
@@ -382,78 +496,15 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 				previousRow.priceByDate,
 			)?.dateKey;
 			const todayDateKey = toDateKey(new Date());
-			const shouldRefetch =
-				!isSameValue || latestPriceDate !== todayDateKey;
+			const shouldRefetch = latestPriceDate !== todayDateKey;
 
 			if (!shouldRefetch) {
 				return;
 			}
 
-			setData((currentData) =>
-				currentData.map((currentRow, currentIdx) => {
-					if (currentIdx !== rowIndex) {
-						return currentRow;
-					}
-					return {
-						...currentRow,
-						name: t("table.status.loadingData"),
-					};
-				}),
-			);
-
-			import("@/fetching/fetchBorsaItaliana")
-				.then((module) => module.fetchBorsaItalianaData(isin))
-				.then((bondData) => {
-					setData((currentData) => {
-						return currentData.map((currentRow, currentIdx) => {
-							if (currentIdx !== rowIndex) {
-								return currentRow;
-							}
-
-							const normalizedPrice = normalizeNumber(
-								bondData.price.last || 0,
-							);
-							const nextRow: FinancialAssetRow = {
-								...currentRow,
-								name: bondData.title,
-								issuingDate: bondData.info.issuingDate,
-								maturityDate: bondData.info.maturityDate,
-								couponRatePerc: bondData.info.couponRatePerc,
-								yearlyFrequency: bondData.info.couponFrequency,
-								priceByDate: upsertPriceByDate(
-									currentRow.priceByDate,
-									todayDateKey,
-									normalizedPrice,
-								),
-							};
-
-							if (isDateToday(currentRow.settlementDate)) {
-								nextRow.settlementPrice = normalizedPrice;
-							}
-
-							return recalculateDerivedFields(nextRow);
-						});
-					});
-				})
-				.catch((error) => {
-					console.error(
-						`[handleUpdateData] Error fetching data for ISIN ${isin}:`,
-						error,
-					);
-					setData((currentData) => {
-						return currentData.map((currentRow, currentIdx) => {
-							if (currentIdx !== rowIndex) {
-								return currentRow;
-							}
-							return {
-								...currentRow,
-								name: t("table.status.fetchFailed"),
-							};
-						});
-					});
-				});
+			void refreshRowFromApi(previousRow._rowId || "", isin);
 		},
-		[data, t],
+		[data, refreshRowFromApi],
 	);
 
 	const renderRowDetails = useCallback(
@@ -490,8 +541,10 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 				onAddRow={handleAddRow}
 				onDeleteAllRows={handleDeleteAllRows}
 				onDeleteRow={handleDeleteRow}
+				onRefreshRow={handleRefreshRow}
 				onNameChange={handleNameChange} // Use our wrapper function
 				onDataChange={handleDataChange}
+				onRefreshAllRows={handleRefreshAllRows}
 				localStorageKey={FINANCIAL_ASSETS_LOCAL_STORAGE_KEY}
 				serializeRow={serializeRow}
 				deserializeRow={deserializeRow}
