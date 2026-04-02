@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { FinancialAssetRow } from "./columns";
 import { getDateFnsLocaleByLanguage } from "@/i18n";
 import { FinancialAsset } from "@/lib/financialAsset";
-import { fromDateKey, toDateKey } from "@/utils/date";
+import { fromDateKey, parseDateKey, toDateKey } from "@/utils/date";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -137,54 +137,14 @@ const toValidDateKeyDate = (dateKey: string): Date | undefined => {
 		return undefined;
 	}
 
-	const parsedDate = fromDateKey(dateKey);
-	if (Number.isNaN(parsedDate.getTime())) {
-		return undefined;
-	}
-
-	parsedDate.setHours(0, 0, 0, 0);
-	return parsedDate;
+	return parseDateKey(dateKey);
 };
 
-const DATE_INPUT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-
 const parseDateInputValue = (value: string): string | undefined => {
-	const trimmedValue = value.trim();
-	if (trimmedValue === "") {
+	const parsedDate = parseDateKey(value);
+	if (!parsedDate) {
 		return undefined;
 	}
-
-	const match = DATE_INPUT_PATTERN.exec(trimmedValue);
-	if (!match) {
-		return undefined;
-	}
-
-	const year = Number(match[1]);
-	const month = Number(match[2]);
-	const day = Number(match[3]);
-
-	if (
-		!Number.isFinite(year) ||
-		!Number.isFinite(month) ||
-		!Number.isFinite(day)
-	) {
-		return undefined;
-	}
-
-	const parsedDate = new Date(year, month - 1, day);
-	if (Number.isNaN(parsedDate.getTime())) {
-		return undefined;
-	}
-
-	if (
-		parsedDate.getFullYear() !== year ||
-		parsedDate.getMonth() !== month - 1 ||
-		parsedDate.getDate() !== day
-	) {
-		return undefined;
-	}
-
-	parsedDate.setHours(0, 0, 0, 0);
 	return toDateKey(parsedDate);
 };
 

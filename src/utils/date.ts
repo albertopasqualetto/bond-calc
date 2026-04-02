@@ -23,14 +23,60 @@ export function isDateToday(date: Date | null | undefined): boolean {
 }
 
 export function toDateKey(date: Date | string): string {
-	const value = new Date(date);
+	const value =
+		typeof date === "string"
+			? parseDateKey(date) || new Date(date)
+			: new Date(date);
 	const year = value.getFullYear();
 	const month = String(value.getMonth() + 1).padStart(2, "0");
 	const day = String(value.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
 }
 
+const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export function parseDateKey(dateKey: string): Date | undefined {
+	const trimmedDateKey = dateKey.trim();
+	const match = DATE_KEY_PATTERN.exec(trimmedDateKey);
+	if (!match) {
+		return undefined;
+	}
+
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+
+	if (
+		!Number.isFinite(year) ||
+		!Number.isFinite(month) ||
+		!Number.isFinite(day)
+	) {
+		return undefined;
+	}
+
+	const parsedDate = new Date(year, month - 1, day);
+	if (Number.isNaN(parsedDate.getTime())) {
+		return undefined;
+	}
+
+	if (
+		parsedDate.getFullYear() !== year ||
+		parsedDate.getMonth() !== month - 1 ||
+		parsedDate.getDate() !== day
+	) {
+		return undefined;
+	}
+
+	parsedDate.setHours(0, 0, 0, 0);
+	return parsedDate;
+}
+
 export function fromDateKey(dateKey: string): Date {
+	const parsedDate = parseDateKey(dateKey);
+	if (parsedDate) {
+		return parsedDate;
+	}
+
 	return new Date(`${dateKey}T00:00:00`);
 }
 

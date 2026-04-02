@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/input-group";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { parseDateKey } from "@/utils/date";
 import { formatNumber, normalizeNumber } from "@/utils/number";
 import { CalendarIcon } from "lucide-react";
 
@@ -108,45 +109,8 @@ const isSameDate = (
 	return first.getTime() === second.getTime();
 };
 
-const DATE_INPUT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-
 const parseDateInputValue = (value: string): Date | undefined => {
-	const trimmedValue = value.trim();
-	if (trimmedValue === "") {
-		return undefined;
-	}
-
-	const match = DATE_INPUT_PATTERN.exec(trimmedValue);
-	if (!match) {
-		return undefined;
-	}
-
-	const year = Number(match[1]);
-	const month = Number(match[2]);
-	const day = Number(match[3]);
-
-	if (
-		!Number.isFinite(year) ||
-		!Number.isFinite(month) ||
-		!Number.isFinite(day)
-	) {
-		return undefined;
-	}
-
-	const parsedDate = new Date(year, month - 1, day);
-	if (Number.isNaN(parsedDate.getTime())) {
-		return undefined;
-	}
-
-	if (
-		parsedDate.getFullYear() !== year ||
-		parsedDate.getMonth() !== month - 1 ||
-		parsedDate.getDate() !== day
-	) {
-		return undefined;
-	}
-
-	return normalizeDate(parsedDate);
+	return parseDateKey(value);
 };
 
 type CalendarLocale = Partial<Locale>;
