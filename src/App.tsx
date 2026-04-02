@@ -16,7 +16,6 @@ export default function App() {
 	);
 
 	useEffect(() => {
-		// Apply initial dark mode
 		if (darkMode) {
 			document.documentElement.classList.add("dark");
 			document.body.classList.add("dark");
@@ -24,18 +23,12 @@ export default function App() {
 			document.documentElement.classList.remove("dark");
 			document.body.classList.remove("dark");
 		}
+	}, [darkMode]);
 
-		// Listen for changes in system preference
+	useEffect(() => {
 		const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 		const handleChange = (e: MediaQueryListEvent) => {
 			setDarkMode(e.matches);
-			if (e.matches) {
-				document.documentElement.classList.add("dark");
-				document.body.classList.add("dark");
-			} else {
-				document.documentElement.classList.remove("dark");
-				document.body.classList.remove("dark");
-			}
 		};
 
 		mediaQuery.addEventListener("change", handleChange);
