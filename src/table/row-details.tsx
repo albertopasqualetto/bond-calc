@@ -368,10 +368,21 @@ export default function RowDetails({
 	const [isEditingHistory, setIsEditingHistory] = useState(false);
 	const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false);
 	const [newDateKey, setNewDateKey] = useState("");
+	const [newDateInputValue, setNewDateInputValue] = useState("");
 	const [newPriceValue, setNewPriceValue] = useState("");
+	const [isAddDateCalendarOpen, setIsAddDateCalendarOpen] = useState(false);
+	const [addDateMonth, setAddDateMonth] = useState<Date | undefined>();
 	const [priceDraftByDate, setPriceDraftByDate] = useState<
 		Record<string, string>
 	>({});
+	const parsedAddDateKey = useMemo(
+		() => parseDateInputValue(newDateInputValue),
+		[newDateInputValue],
+	);
+	const selectedAddDate = useMemo(
+		() => toValidDateKeyDate(parsedAddDateKey || newDateKey),
+		[parsedAddDateKey, newDateKey],
+	);
 
 	const commitPriceByDate = (nextPriceByDate: Record<string, number>) => {
 		if (!rowId || !onPriceByDateChange) {
@@ -403,6 +414,7 @@ export default function RowDetails({
 		setIsEditingHistory((previousState) => {
 			if (previousState) {
 				setIsAddPopoverOpen(false);
+				setIsAddDateCalendarOpen(false);
 				setPriceDraftByDate({});
 				return false;
 			}
@@ -419,39 +431,113 @@ export default function RowDetails({
 
 		setIsAddPopoverOpen(open);
 		if (!open) {
+			setIsAddDateCalendarOpen(false);
 			return;
 		}
 
 		const nextDateKey = getNextAvailableDateKey(row.priceByDate);
 		setNewDateKey(nextDateKey);
+		setNewDateInputValue(nextDateKey);
+		setAddDateMonth(toValidDateKeyDate(nextDateKey));
+		setIsAddDateCalendarOpen(false);
 		setNewPriceValue(toRawNumberInput(getFallbackPrice()));
 	};
 
+	const handleAddDateInputChange = (nextDateInputValue: string) => {
+		setNewDateInputValue(nextDateInputValue);
+
+		const parsedDateKey = parseDateInputValue(nextDateInputValue);
+		if (!parsedDateKey) {
+			return;
+		}
+
+		setNewDateKey(parsedDateKey);
+
+		const parsedDate = toValidDateKeyDate(parsedDateKey);
+		if (!parsedDate) {
+			return;
+		}
+
+		setAddDateMonth(parsedDate);
+	};
+
+	const commitAddDateInputValue = () => {
+		const parsedDateKey = parseDateInputValue(newDateInputValue);
+		if (!parsedDateKey) {
+			setNewDateInputValue(newDateKey);
+			return;
+		}
+
+		setNewDateKey(parsedDateKey);
+		setNewDateInputValue(parsedDateKey);
+
+		const parsedDate = toValidDateKeyDate(parsedDateKey);
+		if (parsedDate) {
+			setAddDateMonth(parsedDate);
+		}
+	};
+
+	const handleAddDateInputKeyDown = (
+		event: React.KeyboardEvent<HTMLInputElement>,
+	) => {
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			setIsAddDateCalendarOpen(true);
+			return;
+		}
+
+		if (event.key !== "Enter") {
+			return;
+		}
+
+		event.preventDefault();
+		commitAddDateInputValue();
+	};
+
+	const handleAddCalendarSelect = (selectedDate: Date | undefined) => {
+		if (!selectedDate) {
+			return;
+		}
+
+		const normalizedDate = new Date(selectedDate);
+		normalizedDate.setHours(0, 0, 0, 0);
+		const normalizedDateKey = toDateKey(normalizedDate);
+		setNewDateKey(normalizedDateKey);
+		setNewDateInputValue(normalizedDateKey);
+		setAddDateMonth(normalizedDate);
+		setIsAddDateCalendarOpen(false);
+	};
+
 	const hasDuplicateAddDate =
-		newDateKey.length > 0 &&
-		Object.prototype.hasOwnProperty.call(row.priceByDate || {}, newDateKey);
+		parsedAddDateKey !== undefined &&
+		Object.prototype.hasOwnProperty.call(
+			row.priceByDate || {},
+			parsedAddDateKey,
+		);
 	const canConfirmAdd =
-		newDateKey.length > 0 &&
+		Boolean(parsedAddDateKey) &&
 		Number.isFinite(normalizeNumber(newPriceValue)) &&
 		!hasDuplicateAddDate;
 
 	const handleAddHistoryEntry = () => {
-		if (!canConfirmAdd) {
+		if (!canConfirmAdd || !parsedAddDateKey) {
 			return;
 		}
 
 		const normalizedPrice = normalizeNumber(newPriceValue);
 		const nextPriceByDate = {
 			...(row.priceByDate || {}),
-			[newDateKey]: normalizedPrice,
+			[parsedAddDateKey]: normalizedPrice,
 		};
 
 		commitPriceByDate(nextPriceByDate);
 		setPriceDraftByDate((previousDrafts) => ({
 			...previousDrafts,
-			[newDateKey]: toRawNumberInput(normalizedPrice),
+			[parsedAddDateKey]: toRawNumberInput(normalizedPrice),
 		}));
 		setIsAddPopoverOpen(false);
+		setIsAddDateCalendarOpen(false);
+		setAddDateMonth(undefined);
 	};
 
 	const handleDateChange = (previousDateKey: string, dateValue: string) => {
@@ -585,17 +671,87 @@ export default function RowDetails({
 								>
 									<div className="space-y-1">
 										<div className="text-xs text-muted-foreground">
-											{t("financialAsset.date")}
+											{t("common.date")}
 										</div>
-										<Input
-											type="date"
-											value={newDateKey}
-											onChange={(event) =>
-												setNewDateKey(
-													event.target.value,
-												)
-											}
-										/>
+										<InputGroup>
+											<InputGroupInput
+												value={newDateInputValue}
+												placeholder="YYYY-MM-DD"
+												onChange={(event) =>
+													handleAddDateInputChange(
+														event.target.value,
+													)
+												}
+												onBlur={commitAddDateInputValue}
+												onKeyDown={
+													handleAddDateInputKeyDown
+												}
+											/>
+											<InputGroupAddon align="inline-end">
+												<Popover
+													open={isAddDateCalendarOpen}
+													onOpenChange={
+														setIsAddDateCalendarOpen
+													}
+												>
+													<PopoverTrigger
+														render={
+															<InputGroupButton
+																id="add-date-picker"
+																variant="ghost"
+																size="icon-xs"
+																aria-label={t(
+																	"common.date",
+																)}
+															>
+																<CalendarIcon />
+																<span className="sr-only">
+																	{t(
+																		"common.date",
+																	)}
+																</span>
+															</InputGroupButton>
+														}
+													/>
+													<PopoverContent
+														className="w-auto overflow-hidden gap-0 p-0"
+														align="end"
+														alignOffset={-8}
+														sideOffset={10}
+													>
+														<Calendar
+															mode="single"
+															selected={
+																selectedAddDate
+															}
+															month={addDateMonth}
+															onMonthChange={
+																setAddDateMonth
+															}
+															onSelect={
+																handleAddCalendarSelect
+															}
+															captionLayout="dropdown"
+															startMonth={
+																new Date(
+																	1970,
+																	0,
+																)
+															}
+															endMonth={
+																new Date(
+																	2100,
+																	11,
+																)
+															}
+															locale={
+																calendarLocale
+															}
+														/>
+													</PopoverContent>
+												</Popover>
+											</InputGroupAddon>
+										</InputGroup>
 									</div>
 									<div className="space-y-1">
 										<div className="text-xs text-muted-foreground">
@@ -647,18 +803,18 @@ export default function RowDetails({
 								className="rounded border p-2 text-sm"
 							>
 								<div>
-									{t("financialAsset.date")}:
+									{t("common.date")}:
 									{isEditingHistory ? (
-										<Input
-											type="date"
-											value={entry.dateKey}
-											onChange={(event) =>
+										<EditableHistoryDateField
+											dateKey={entry.dateKey}
+											calendarLocale={calendarLocale}
+											ariaLabel={t("common.date")}
+											onDateKeyChange={(nextDateKey) =>
 												handleDateChange(
 													entry.dateKey,
-													event.target.value,
+													nextDateKey,
 												)
 											}
-											className="mt-1"
 										/>
 									) : (
 										<span>
