@@ -49,19 +49,23 @@ const buildHistoricalRows = (
 		return [];
 	}
 
-	const totalValueNominal =
-		row.totalValueNominal && row.redemptionPrice
-			? normalizeNumber(row.totalValueNominal)
+	const totalValueNominal = normalizeNumber(row.totalValueNominal ?? NaN);
+	const redemptionPrice = normalizeNumber(row.redemptionPrice);
+	const settlementPrice = normalizeNumber(row.settlementPrice);
+	const hasValidBaseValues =
+		Number.isFinite(totalValueNominal) &&
+		Number.isFinite(redemptionPrice) &&
+		redemptionPrice !== 0;
+	const totalValueSettlement =
+		hasValidBaseValues && Number.isFinite(settlementPrice)
+			? (totalValueNominal / redemptionPrice) * settlementPrice
 			: NaN;
-	const totalValueSettlement = totalValueNominal
-		? (totalValueNominal / row.redemptionPrice) * row.settlementPrice
-		: NaN;
 
 	return entries.map(([dateKey, rawPrice]) => {
 		const price = Number(rawPrice);
 		const date = fromDateKey(dateKey);
-		const totalValueToday = totalValueNominal
-			? (totalValueNominal / row.redemptionPrice) * price
+		const totalValueToday = hasValidBaseValues
+			? (totalValueNominal / redemptionPrice) * price
 			: NaN;
 
 		return {

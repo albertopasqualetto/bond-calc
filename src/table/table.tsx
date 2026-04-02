@@ -65,7 +65,17 @@ const normalizeIsinValue = (value: unknown): string => {
 };
 
 const calculateTotalValues = (row: FinancialAssetRow) => {
-	if (!row.totalValueNominal || !row.redemptionPrice) {
+	const totalValueNominal = normalizeNumber(row.totalValueNominal ?? NaN);
+	const redemptionPrice = normalizeNumber(row.redemptionPrice);
+	const settlementPrice = normalizeNumber(row.settlementPrice);
+	const todayPrice = normalizeNumber(row.todayPrice ?? NaN);
+
+	const hasValidBaseValues =
+		Number.isFinite(totalValueNominal) &&
+		Number.isFinite(redemptionPrice) &&
+		redemptionPrice !== 0;
+
+	if (!hasValidBaseValues) {
 		return {
 			totalValueSettlement: NaN,
 			totalValueToday: NaN,
@@ -73,11 +83,11 @@ const calculateTotalValues = (row: FinancialAssetRow) => {
 		};
 	}
 
-	const totalValueNominal = normalizeNumber(row.totalValueNominal);
-	const totalValueSettlement =
-		(totalValueNominal / row.redemptionPrice) * row.settlementPrice;
-	const totalValueToday = row.todayPrice
-		? (totalValueNominal / row.redemptionPrice) * row.todayPrice
+	const totalValueSettlement = Number.isFinite(settlementPrice)
+		? (totalValueNominal / redemptionPrice) * settlementPrice
+		: NaN;
+	const totalValueToday = Number.isFinite(todayPrice)
+		? (totalValueNominal / redemptionPrice) * todayPrice
 		: NaN;
 
 	return {
