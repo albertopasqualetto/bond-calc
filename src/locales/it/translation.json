@@ -6,6 +6,7 @@
 		"na": "N/D",
 		"close": "Chiudi",
 		"jsonFile": "File JSON",
+		"date": "Data",
 		"today": "Oggi",
 		"edit": "Modifica",
 		"done": "Fatto"
@@ -15,7 +16,6 @@
 		"name": "Nome",
 		"priceHistory": "Storico prezzi",
 		"noHistoricalData": "Nessun dato storico disponibile.",
-		"date": "Data",
 		"price": "Prezzo",
 		"grossYield": "Rendimento lordo",
 		"netYield": "Rendimento netto",

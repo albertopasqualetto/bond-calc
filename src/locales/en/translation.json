@@ -6,6 +6,7 @@
 		"na": "N/A",
 		"close": "Close",
 		"jsonFile": "JSON file",
+		"date": "Date",
 		"today": "Today",
 		"edit": "Edit",
 		"done": "Done"
@@ -15,7 +16,6 @@
 		"name": "Name",
 		"priceHistory": "Price history",
 		"noHistoricalData": "No historical data available.",
-		"date": "Date",
 		"price": "Price",
 		"grossYield": "Gross yield",
 		"netYield": "Net yield",
