@@ -1,12 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { Locale } from "react-day-picker";
 import { useTranslation } from "react-i18next";
 import type { FinancialAssetRow } from "./columns";
+import { getDateFnsLocaleByLanguage } from "@/i18n";
 import { FinancialAsset } from "@/lib/financialAsset";
 import { fromDateKey, toDateKey } from "@/utils/date";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from "@/components/ui/input-group";
 import {
 	Popover,
 	PopoverContent,
@@ -18,7 +27,7 @@ import {
 	formatPercent,
 	normalizeNumber,
 } from "@/utils/number";
-import { Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarIcon, Check, Pencil, Plus, Trash2 } from "lucide-react";
 
 interface HistoricalCalculationRow {
 	dateKey: string;
@@ -95,6 +104,90 @@ interface RowDetailsProps {
 	) => void;
 }
 
+type CalendarLocale = Partial<Locale>;
+
+const getCalendarLocaleKeys = (locale: string | undefined): string[] => {
+	if (!locale) {
+		return ["en"];
+	}
+
+	const normalizedLocale = locale.replace("_", "-").toLowerCase();
+	const baseLanguage = normalizedLocale.split("-")[0];
+
+	return Array.from(new Set([normalizedLocale, baseLanguage, "en"]));
+};
+
+const resolveCalendarLocale = (
+	locale: string | undefined,
+): CalendarLocale | undefined => {
+	const keys = getCalendarLocaleKeys(locale);
+
+	for (const key of keys) {
+		const loadedLocale = getDateFnsLocaleByLanguage(key);
+		if (loadedLocale) {
+			return loadedLocale as CalendarLocale;
+		}
+	}
+
+	return undefined;
+};
+
+const toValidDateKeyDate = (dateKey: string): Date | undefined => {
+	if (!dateKey) {
+		return undefined;
+	}
+
+	const parsedDate = fromDateKey(dateKey);
+	if (Number.isNaN(parsedDate.getTime())) {
+		return undefined;
+	}
+
+	parsedDate.setHours(0, 0, 0, 0);
+	return parsedDate;
+};
+
+const DATE_INPUT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+const parseDateInputValue = (value: string): string | undefined => {
+	const trimmedValue = value.trim();
+	if (trimmedValue === "") {
+		return undefined;
+	}
+
+	const match = DATE_INPUT_PATTERN.exec(trimmedValue);
+	if (!match) {
+		return undefined;
+	}
+
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+
+	if (
+		!Number.isFinite(year) ||
+		!Number.isFinite(month) ||
+		!Number.isFinite(day)
+	) {
+		return undefined;
+	}
+
+	const parsedDate = new Date(year, month - 1, day);
+	if (Number.isNaN(parsedDate.getTime())) {
+		return undefined;
+	}
+
+	if (
+		parsedDate.getFullYear() !== year ||
+		parsedDate.getMonth() !== month - 1 ||
+		parsedDate.getDate() !== day
+	) {
+		return undefined;
+	}
+
+	parsedDate.setHours(0, 0, 0, 0);
+	return toDateKey(parsedDate);
+};
+
 const getNextAvailableDateKey = (existing?: Record<string, number>): string => {
 	const usedKeys = new Set(Object.keys(existing || {}));
 	const candidate = new Date();
@@ -118,12 +211,149 @@ const toRawNumberInput = (value: number): string =>
 		useGrouping: false,
 	});
 
+interface EditableHistoryDateFieldProps {
+	dateKey: string;
+	calendarLocale: CalendarLocale | undefined;
+	ariaLabel: string;
+	onDateKeyChange: (nextDateKey: string) => void;
+}
+
+const EditableHistoryDateField = ({
+	dateKey,
+	calendarLocale,
+	ariaLabel,
+	onDateKeyChange,
+}: EditableHistoryDateFieldProps) => {
+	const [open, setOpen] = useState(false);
+	const [inputValue, setInputValue] = useState(dateKey);
+	const [month, setMonth] = useState<Date | undefined>(() =>
+		toValidDateKeyDate(dateKey),
+	);
+	const selectedDate = useMemo(() => {
+		const parsedDateKey = parseDateInputValue(inputValue);
+		return toValidDateKeyDate(parsedDateKey || dateKey);
+	}, [dateKey, inputValue]);
+
+	const commitInputValue = () => {
+		const parsedDateKey = parseDateInputValue(inputValue);
+		if (!parsedDateKey) {
+			setInputValue(dateKey);
+			return;
+		}
+
+		onDateKeyChange(parsedDateKey);
+		const parsedDate = toValidDateKeyDate(parsedDateKey);
+		if (parsedDate) {
+			setMonth(parsedDate);
+		}
+		setInputValue(dateKey);
+	};
+
+	const handleInputChange = (nextDateInputValue: string) => {
+		setInputValue(nextDateInputValue);
+
+		const parsedDateKey = parseDateInputValue(nextDateInputValue);
+		if (!parsedDateKey) {
+			return;
+		}
+
+		const parsedDate = toValidDateKeyDate(parsedDateKey);
+		if (!parsedDate) {
+			return;
+		}
+
+		setMonth(parsedDate);
+	};
+
+	const handleInputKeyDown = (
+		event: React.KeyboardEvent<HTMLInputElement>,
+	) => {
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			setOpen(true);
+			return;
+		}
+
+		if (event.key !== "Enter") {
+			return;
+		}
+
+		event.preventDefault();
+		commitInputValue();
+		setOpen(false);
+	};
+
+	const handleSelect = (nextDate: Date | undefined) => {
+		if (!nextDate) {
+			return;
+		}
+
+		const normalizedDate = new Date(nextDate);
+		normalizedDate.setHours(0, 0, 0, 0);
+		const normalizedDateKey = toDateKey(normalizedDate);
+		onDateKeyChange(normalizedDateKey);
+		setInputValue(normalizedDateKey);
+		setMonth(normalizedDate);
+		setOpen(false);
+	};
+
+	return (
+		<InputGroup className="mt-1">
+			<InputGroupInput
+				value={inputValue}
+				placeholder="YYYY-MM-DD"
+				onChange={(event) => handleInputChange(event.target.value)}
+				onBlur={commitInputValue}
+				onKeyDown={handleInputKeyDown}
+			/>
+			<InputGroupAddon align="inline-end">
+				<Popover open={open} onOpenChange={setOpen}>
+					<PopoverTrigger
+						render={
+							<InputGroupButton
+								variant="ghost"
+								size="icon-xs"
+								aria-label={ariaLabel}
+							>
+								<CalendarIcon />
+								<span className="sr-only">{ariaLabel}</span>
+							</InputGroupButton>
+						}
+					/>
+					<PopoverContent
+						className="w-auto overflow-hidden gap-0 p-0"
+						align="end"
+						alignOffset={-8}
+						sideOffset={10}
+					>
+						<Calendar
+							mode="single"
+							selected={selectedDate}
+							month={month}
+							onMonthChange={setMonth}
+							onSelect={handleSelect}
+							captionLayout="dropdown"
+							startMonth={new Date(1970, 0)}
+							endMonth={new Date(2100, 11)}
+							locale={calendarLocale}
+						/>
+					</PopoverContent>
+				</Popover>
+			</InputGroupAddon>
+		</InputGroup>
+	);
+};
+
 export default function RowDetails({
 	row,
 	onPriceByDateChange,
 }: RowDetailsProps) {
 	const { t, i18n } = useTranslation();
 	const locale = i18n.resolvedLanguage || "en";
+	const calendarLocale = useMemo(
+		() => resolveCalendarLocale(locale),
+		[locale],
+	);
 	const historicalRows = useMemo(() => buildHistoricalRows(row), [row]);
 	const dateFormatter = useMemo(
 		() =>
