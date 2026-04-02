@@ -527,7 +527,26 @@ export default function YieldsTable({ name, onNameChange }: YieldsTableProps) {
 						</div>
 					}
 				>
-					<RowDetails row={row} />
+					<RowDetails
+						row={row}
+						onPriceByDateChange={(
+							rowId: string,
+							priceByDate: Record<string, number>,
+						) => {
+							setData((previousData) =>
+								previousData.map((item) => {
+									if (item._rowId !== rowId) {
+										return item;
+									}
+
+									return recalculateDerivedFields({
+										...item,
+										priceByDate,
+									});
+								}),
+							);
+						}}
+					/>
 				</Suspense>
 			);
 		},

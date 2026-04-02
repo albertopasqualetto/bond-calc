@@ -6,7 +6,9 @@
 		"na": "N/A",
 		"close": "Close",
 		"jsonFile": "JSON file",
-		"today": "Today"
+		"today": "Today",
+		"edit": "Edit",
+		"done": "Done"
 	},
 	"financialAsset": {
 		"isin": "ISIN",
@@ -31,7 +33,10 @@
 		"net": "Net",
 		"yieldSellingToday": "Yield selling today",
 		"priceToday": "Price today",
-		"purchase": "Purchase"
+		"purchase": "Purchase",
+		"addPriceHistoryEntry": "Add historic price",
+		"historyDateAlreadyExists": "A price already exists for this date.",
+		"deletePriceHistoryEntry": "Delete historic price"
 	},
 	"table": {
 		"common": {
