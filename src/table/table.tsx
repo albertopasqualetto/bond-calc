@@ -9,7 +9,12 @@ import {
 } from "./columns";
 import { DataTable } from "@/table/template";
 import { FINANCIAL_ASSETS_LOCAL_STORAGE_KEY } from "@/constants";
-import { fromDateKey, isDateToday, toDateKey } from "@/utils/date";
+import {
+	fromDateKey,
+	isDateToday,
+	parseDateKey,
+	toDateKey,
+} from "@/utils/date";
 import { normalizeNumber } from "@/utils/number";
 import { FinancialAsset } from "@/lib/financialAsset";
 import { toast } from "sonner";
@@ -33,7 +38,11 @@ type PersistedFinancialAssetRow = Omit<
 const getLatestPriceEntry = (priceByDate?: Record<string, number>) => {
 	if (!priceByDate) return null;
 	const validEntries = Object.entries(priceByDate)
-		.filter(([, value]) => Number.isFinite(Number(value)))
+		.filter(
+			([dateKey, value]) =>
+				parseDateKey(dateKey) !== undefined &&
+				Number.isFinite(Number(value)),
+		)
 		.sort(([firstKey], [secondKey]) => firstKey.localeCompare(secondKey));
 	if (validEntries.length === 0) return null;
 	const [dateKey, price] = validEntries[validEntries.length - 1];
@@ -180,12 +189,18 @@ const sanitizeRowForPersistence = (
 const rehydrateRowFromPersistence = (
 	row: PersistedFinancialAssetRow,
 ): FinancialAssetRow => {
-	let normalizedPriceByDate = Object.fromEntries(
-		Object.entries(row.priceByDate || {}).map(([dateKey, price]) => [
-			dateKey,
-			normalizeNumber(price),
-		]),
-	);
+	let normalizedPriceByDate: Record<string, number> = {};
+
+	for (const [dateKey, price] of Object.entries(row.priceByDate || {})) {
+		const parsedDate = parseDateKey(dateKey);
+		const normalizedPrice = normalizeNumber(price);
+
+		if (!parsedDate || !Number.isFinite(normalizedPrice)) {
+			continue;
+		}
+
+		normalizedPriceByDate[toDateKey(parsedDate)] = normalizedPrice;
+	}
 
 	// Backward compatibility for legacy exports that only had todayPrice.
 	// TODO remove in the future

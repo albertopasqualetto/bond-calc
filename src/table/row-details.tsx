@@ -42,8 +42,23 @@ const buildHistoricalRows = (
 	row: FinancialAssetRow,
 ): HistoricalCalculationRow[] => {
 	const entries = Object.entries(row.priceByDate || {})
-		.filter(([, price]) => Number.isFinite(Number(price)))
-		.sort(([first], [second]) => first.localeCompare(second));
+		.flatMap(([dateKey, rawPrice]) => {
+			const date = parseDateKey(dateKey);
+			const price = Number(rawPrice);
+
+			if (!date || !Number.isFinite(price)) {
+				return [];
+			}
+
+			return [
+				{
+					dateKey,
+					date,
+					price,
+				},
+			];
+		})
+		.sort((first, second) => first.dateKey.localeCompare(second.dateKey));
 
 	if (entries.length === 0) {
 		return [];
@@ -78,9 +93,7 @@ const buildHistoricalRows = (
 			? (totalValueNominal / redemptionPrice) * settlementPrice
 			: NaN;
 
-	return entries.map(([dateKey, rawPrice]) => {
-		const price = Number(rawPrice);
-		const date = fromDateKey(dateKey);
+	return entries.map(({ dateKey, date, price }) => {
 		const totalValueToday = hasValidBaseValues
 			? (totalValueNominal / redemptionPrice) * price
 			: NaN;
@@ -339,6 +352,19 @@ export default function RowDetails({
 		() => parseDateInputValue(newDateInputValue),
 		[newDateInputValue],
 	);
+	const parsedAddPrice = useMemo(() => {
+		const trimmedPriceValue = newPriceValue.trim();
+		if (trimmedPriceValue.length === 0) {
+			return undefined;
+		}
+
+		const normalizedPrice = normalizeNumber(trimmedPriceValue);
+		if (!Number.isFinite(normalizedPrice)) {
+			return undefined;
+		}
+
+		return normalizedPrice;
+	}, [newPriceValue]);
 	const selectedAddDate = useMemo(
 		() => toValidDateKeyDate(parsedAddDateKey || newDateKey),
 		[parsedAddDateKey, newDateKey],
@@ -476,24 +502,27 @@ export default function RowDetails({
 		);
 	const canConfirmAdd =
 		Boolean(parsedAddDateKey) &&
-		Number.isFinite(normalizeNumber(newPriceValue)) &&
+		parsedAddPrice !== undefined &&
 		!hasDuplicateAddDate;
 
 	const handleAddHistoryEntry = () => {
-		if (!canConfirmAdd || !parsedAddDateKey) {
+		if (
+			!canConfirmAdd ||
+			!parsedAddDateKey ||
+			parsedAddPrice === undefined
+		) {
 			return;
 		}
 
-		const normalizedPrice = normalizeNumber(newPriceValue);
 		const nextPriceByDate = {
 			...(row.priceByDate || {}),
-			[parsedAddDateKey]: normalizedPrice,
+			[parsedAddDateKey]: parsedAddPrice,
 		};
 
 		commitPriceByDate(nextPriceByDate);
 		setPriceDraftByDate((previousDrafts) => ({
 			...previousDrafts,
-			[parsedAddDateKey]: toRawNumberInput(normalizedPrice),
+			[parsedAddDateKey]: toRawNumberInput(parsedAddPrice),
 		}));
 		setIsAddPopoverOpen(false);
 		setIsAddDateCalendarOpen(false);
@@ -763,7 +792,7 @@ export default function RowDetails({
 								className="rounded border p-2 text-sm"
 							>
 								<div>
-									{t("common.date")}:
+									{t("common.date")}:{" "}
 									{isEditingHistory ? (
 										<EditableHistoryDateField
 											dateKey={entry.dateKey}
@@ -785,7 +814,7 @@ export default function RowDetails({
 									)}
 								</div>
 								<div>
-									{t("financialAsset.price")}:
+									{t("financialAsset.price")}:{" "}
 									{isEditingHistory ? (
 										<div className="mt-1 flex items-center gap-1">
 											<Input
@@ -828,10 +857,14 @@ export default function RowDetails({
 										</div>
 									) : (
 										<span>
-											{formatNumber(entry.price, locale, {
-												minimumFractionDigits: 3,
-												maximumFractionDigits: 3,
-											})}
+											{formatCurrency(
+												entry.price,
+												locale,
+												{
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												},
+											)}
 										</span>
 									)}
 								</div>
