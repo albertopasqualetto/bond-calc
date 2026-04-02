@@ -34,12 +34,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogFooter,
-	DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Download, Upload, CalendarSync } from "lucide-react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const STORAGE_SCHEMA_VERSION = 2;
 
@@ -218,6 +218,44 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
 	return typeof value === "object" && value !== null;
 };
 
+const isImportablePayload = (payload: unknown): boolean => {
+	if (Array.isArray(payload)) {
+		return true;
+	}
+
+	if (!isRecord(payload)) {
+		return false;
+	}
+
+	return Array.isArray(payload.tableData);
+};
+
+const isLegacyPayload = (payload: unknown): boolean => {
+	if (Array.isArray(payload)) {
+		return true;
+	}
+
+	if (!isRecord(payload)) {
+		return false;
+	}
+
+	if (payload.schemaVersion !== STORAGE_SCHEMA_VERSION) {
+		return true;
+	}
+
+	if (!Array.isArray(payload.tableData)) {
+		return false;
+	}
+
+	return payload.tableData.some((item) => {
+		if (!isRecord(item)) {
+			return false;
+		}
+
+		return "todayPrice" in item && !("priceByDate" in item);
+	});
+};
+
 const getRowIdentity = (value: unknown): string | null => {
 	if (!isRecord(value)) {
 		return null;
@@ -326,58 +364,47 @@ function DataTableInner<TData, TValue>({
 	);
 
 	const applyImportedPayload = useCallback(
-		(payload: unknown) => {
-			if (!isRecord(payload)) {
-				return;
+		(
+			payload: unknown,
+			options?: {
+				warnIfLegacy: boolean;
+			},
+		): boolean => {
+			if (!isImportablePayload(payload)) {
+				return false;
 			}
 
-			const record = payload;
-			if (
-				typeof record.ownerName === "string" &&
-				record.ownerName &&
-				onNameChange &&
-				record.ownerName !== name
-			) {
-				onNameChange(record.ownerName);
+			if (options?.warnIfLegacy && isLegacyPayload(payload)) {
+				toast(t("table.toasts.legacyFormatImported"));
+			}
+
+			if (isRecord(payload)) {
+				const record = payload;
+				if (
+					typeof record.ownerName === "string" &&
+					record.ownerName &&
+					onNameChange &&
+					record.ownerName !== name
+				) {
+					onNameChange(record.ownerName);
+				}
 			}
 
 			if (!onDataChange) {
-				return;
+				return true;
 			}
 
 			const rows = extractRowsFromPayload(payload);
 			onDataChange(rows);
+			return true;
 		},
-		[extractRowsFromPayload, name, onDataChange, onNameChange],
+		[extractRowsFromPayload, name, onDataChange, onNameChange, t],
 	);
 
-	const shouldMigratePayload = useCallback((payload: unknown): boolean => {
-		if (Array.isArray(payload)) {
-			return true;
-		}
-
-		if (!isRecord(payload)) {
-			return false;
-		}
-
-		const record = payload;
-		if (record.schemaVersion !== STORAGE_SCHEMA_VERSION) {
-			return true;
-		}
-
-		if (!Array.isArray(record.tableData)) {
-			return false;
-		}
-
-		return record.tableData.some((item) => {
-			if (!isRecord(item)) {
-				return false;
-			}
-
-			const row = item;
-			return "todayPrice" in row && !("priceByDate" in row);
-		});
-	}, []);
+	const shouldMigratePayload = useCallback(
+		(payload: unknown): boolean => isLegacyPayload(payload),
+		[],
+	);
 
 	const rewriteStoragePayload = useCallback(
 		(payload: unknown) => {
@@ -385,13 +412,14 @@ function DataTableInner<TData, TValue>({
 				return;
 			}
 
-			if (!isRecord(payload)) {
+			if (!isImportablePayload(payload)) {
 				return;
 			}
 
-			const record = payload;
 			const ownerNameFromPayload =
-				typeof record.ownerName === "string" ? record.ownerName : name;
+				isRecord(payload) && typeof payload.ownerName === "string"
+					? payload.ownerName
+					: name;
 			const rows = extractRowsFromPayload(payload);
 			const tableDataToStore = serializeRow
 				? rows.map((row) => serializeRow(row))
@@ -476,24 +504,25 @@ function DataTableInner<TData, TValue>({
 			if (savedData) {
 				try {
 					const parsedData: unknown = JSON.parse(savedData);
-					if (!isRecord(parsedData)) {
+					if (!isImportablePayload(parsedData)) {
 						if (onDataChange && defaultData.length > 0) {
 							onDataChange(defaultData);
 						}
 						return;
 					}
 
-					const parsedDataRecord = parsedData;
-					const isEmptyPayload =
-						parsedDataRecord.ownerName === "" &&
-						Array.isArray(parsedDataRecord.tableData) &&
-						parsedDataRecord.tableData.length === 0;
+					if (isRecord(parsedData)) {
+						const isEmptyPayload =
+							parsedData.ownerName === "" &&
+							Array.isArray(parsedData.tableData) &&
+							parsedData.tableData.length === 0;
 
-					if (isEmptyPayload) {
-						if (onDataChange && defaultData.length > 0) {
-							onDataChange(defaultData);
+						if (isEmptyPayload) {
+							if (onDataChange && defaultData.length > 0) {
+								onDataChange(defaultData);
+							}
+							return;
 						}
-						return;
 					}
 					applyImportedPayload(parsedData);
 					if (shouldMigratePayload(parsedData)) {
@@ -649,7 +678,16 @@ function DataTableInner<TData, TValue>({
 				}
 				const parsedData: unknown = JSON.parse(result);
 
-				applyImportedPayload(parsedData);
+				const wasImported = applyImportedPayload(parsedData, {
+					warnIfLegacy: true,
+				});
+				if (!wasImported) {
+					throw new Error("Unsupported import payload format");
+				}
+
+				if (shouldMigratePayload(parsedData)) {
+					rewriteStoragePayload(parsedData);
+				}
 			} catch (error) {
 				console.error("Failed to parse imported data:", error);
 				alert(t("table.alerts.invalidImport"));
@@ -919,16 +957,6 @@ function DataTableInner<TData, TValue>({
 								</Button>
 							)}
 						</div>
-						<DialogClose
-							render={
-								<Button
-									variant="outline"
-									className="cursor-pointer"
-								/>
-							}
-						>
-							{t("common.close")}
-						</DialogClose>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

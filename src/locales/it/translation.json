@@ -49,7 +49,8 @@
 		"toasts": {
 			"loading": "Recupero dati per {{isin}}...",
 			"success": "Aggiornato {{name}} ({{isin}})",
-			"error": "Recupero dati non riuscito per {{isin}}"
+			"error": "Recupero dati non riuscito per {{isin}}",
+			"legacyFormatImported": "Formato file legacy importato. Esporta di nuovo per salvarlo nel nuovo formato."
 		},
 		"actions": {
 			"export": "Esporta",

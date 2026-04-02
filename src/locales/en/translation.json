@@ -49,7 +49,8 @@
 		"toasts": {
 			"loading": "Fetching data for {{isin}}...",
 			"success": "Updated {{name}} ({{isin}})",
-			"error": "Failed to fetch data for {{isin}}"
+			"error": "Failed to fetch data for {{isin}}",
+			"legacyFormatImported": "Imported legacy file format. Please export again to save it in the new format."
 		},
 		"actions": {
 			"export": "Export",
